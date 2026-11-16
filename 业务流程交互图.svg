@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 888" font-family="'Segoe UI','Microsoft YaHei',sans-serif">
+  <style>
+    .panel{fill:#ffffff;stroke:#d8d2c7;stroke-width:1.5;}
+    .phead{fill:#ece7df;stroke:#d8d2c7;stroke-width:1.5;}
+    .ptitle{fill:#2d2a27;font-size:15px;font-weight:700;}
+    .box{fill:#ffffff;stroke:#3f6b78;stroke-width:1.5;rx:6;}
+    .bbox{fill:#e3ecee;stroke:#3f6b78;stroke-width:1.5;rx:6;}
+    .bmain{fill:#2d2a27;font-size:13px;font-weight:600;}
+    .bsub{fill:#5c5650;font-size:11px;}
+    .arrow{stroke:#3f6b78;stroke-width:1.8;fill:none;}
+    .anum{fill:#3f6b78;font-size:12px;font-weight:700;}
+    .acc{fill:#3f6b78;font-size:12.5px;font-weight:700;}
+    .note{fill:#a86a4c;font-size:11.5px;}
+    .nest{fill:#f4f1ea;stroke:#c9c2b6;stroke-width:1.2;rx:6;}
+    .nl{fill:#5c5650;font-size:11px;}
+    .nlh{fill:#2d2a27;font-size:11.5px;font-weight:700;}
+    .ttl{fill:#2d2a27;font-size:17px;font-weight:700;}
+    .role{fill:#5c5650;font-size:12px;}
+  </style>
+
+  <text x="380" y="30" text-anchor="middle" class="ttl">phosphor-host-ipmid</text>
+  <text x="380" y="50" text-anchor="middle" class="role">主机管理命令通道 · IPMI 命令→D-Bus 调用</text>
+
+  <!-- Panel A 业务流程：Get Chassis Status 主链路 -->
+  <rect class="panel" x="20" y="64" width="720" height="380" rx="6"/>
+  <rect class="phead" x="20" y="64" width="720" height="32" rx="6"/>
+  <text x="34" y="86" class="ptitle">一、业务流程：ipmitool power status / Get Chassis Status 主链路</text>
+
+  <rect class="box" x="90" y="104" width="580" height="44" rx="6"/>
+  <text x="110" y="122" class="bmain">① 主机 ipmitool power status → IPMI 帧 netFn=00h / cmd=01h (Get Chassis Status)</text>
+  <text x="110" y="138" class="bsub">命令号 api-types.hpp:168,347 ｜ handler 注册 chassishandler.cpp:2565-2568</text>
+
+  <line class="arrow" x1="380" y1="148" x2="380" y2="160"/>
+  <polygon points="372,158 388,158 380,170" fill="#3f6b78"/>
+
+  <rect class="box" x="90" y="160" width="580" height="44" rx="6"/>
+  <text x="110" y="178" class="bmain">② KCS/BT 字节驱动(独立仓库) 搬出字节 → 经 D-Bus execute 送帧进 ipmid</text>
+  <text x="110" y="194" class="bsub">execute 方法注册 ipmid-new.cpp:900-904 ｜ 老路径 signal :871-876</text>
+
+  <line class="arrow" x1="380" y1="204" x2="380" y2="216"/>
+  <polygon points="372,214 388,214 380,226" fill="#3f6b78"/>
+
+  <rect class="box" x="90" y="216" width="580" height="44" rx="6"/>
+  <text x="110" y="234" class="bmain">③ ipmid 主循环 io-&gt;run 收帧：executionEntry 查 channel/权限，建 Context+Request</text>
+  <text x="110" y="250" class="bsub">main ipmid-new.cpp:830-917 ｜ executionEntry :492-494 ｜ Context :581-585</text>
+
+  <line class="arrow" x1="380" y1="260" x2="380" y2="272"/>
+  <polygon points="372,270 388,270 380,282" fill="#3f6b78"/>
+
+  <rect class="box" x="90" y="272" width="580" height="44" rx="6"/>
+  <text x="110" y="290" class="bmain">④ command table 按 NetFn/Cmd 查 handlerMap → 鉴权 → handler-&gt;call 分发</text>
+  <text x="110" y="306" class="bsub">分流 ipmid-new.cpp:332-344 ｜ 查表/鉴权/调用 :241-266 ｜ makeCmdKey :103-106</text>
+
+  <line class="arrow" x1="380" y1="316" x2="380" y2="328"/>
+  <polygon points="372,326 388,326 380,338" fill="#3f6b78"/>
+
+  <rect class="bbox" x="90" y="328" width="580" height="44" rx="6"/>
+  <text x="110" y="346" class="bmain">⑤ handler ipmiGetChassisStatus → getPowerStatus 经 sdbusplus 读 state-manager</text>
+  <text x="110" y="362" class="bsub">chassishandler.cpp:1250-1255, :1028-1047 ｜ getDbusProperty utils.cpp:89-105</text>
+
+  <line class="arrow" x1="380" y1="372" x2="380" y2="384"/>
+  <polygon points="372,382 388,382 380,394" fill="#3f6b78"/>
+
+  <rect class="box" x="90" y="384" width="580" height="44" rx="6"/>
+  <text x="110" y="402" class="bmain">⑥ responseSuccess 打包 → dbusResponse(netFn|0x01) 组 IPMI 响应回主机</text>
+  <text x="110" y="418" class="bsub">chassishandler.cpp:1316-1331 ｜ ipmid-new.cpp:588 ｜ 完成码 handler.hpp:298-305</text>
+
+  <!-- Panel B 代码体系结构 -->
+  <rect class="panel" x="20" y="458" width="720" height="232" rx="6"/>
+  <rect class="phead" x="20" y="458" width="720" height="32" rx="6"/>
+  <text x="34" y="480" class="ptitle">二、代码体系结构：插件化的「主进程 + provider」</text>
+
+  <text x="40" y="508" class="nlh">① transport / 传输入口</text>
+  <text x="40" y="526" class="nl">KCS/BT 字节驱动在独立仓库；经 D-Bus execute 送帧 (:900-904)</text>
+  <text x="40" y="546" class="nlh">② 注册与分发 ipmid-new.cpp</text>
+  <text x="40" y="564" class="nl">constructor 注册→handlerMap 查表 (:137-159, :241-266)</text>
+  <text x="40" y="584" class="nlh">③ app/ 命令组 libipmi20.so</text>
+  <text x="40" y="602" class="nl">chassis/sensor/storage 等；dlopen provider (:868-869)</text>
+  <text x="40" y="622" class="nlh">④ D-Bus 适配层 utils.cpp</text>
+  <text x="40" y="640" class="nl">getService 找服务 + getDbusProperty 读写 (:89-105, :203-225)</text>
+  <text x="40" y="660" class="nlh">⑤ 用户会话与权限</text>
+  <text x="40" y="678" class="nl">Privilege 分级 + channel 映射，运行时鉴权 (:262-265)</text>
+
+  <text x="400" y="508" class="nlh">产出目标 (meson.build)</text>
+  <text x="400" y="526" class="nl">ipmid 可执行 + libipmid.so + libipmi20.so provider</text>
+  <text x="400" y="546" class="nlh">插件化架构</text>
+  <text x="400" y="564" class="nl">主进程很小，逻辑在 provider，启动 dlopen 加载</text>
+  <text x="400" y="584" class="nlh">三张路由表 (:112-132)</text>
+  <text x="400" y="602" class="nl">handlerMap / groupHandlerMap / oemHandlerMap</text>
+  <text x="400" y="622" class="nlh">编解码 (handler.hpp)</text>
+  <text x="400" y="640" class="nl">unpack 字节→参数；std::apply 调用 (:198, :266)</text>
+  <text x="400" y="660" class="nlh">反向命令 host-cmd-manager</text>
+  <text x="400" y="678" class="nl">BMC→主机 SMS_ATN 队列，READ_MSG_DATA 拉取</text>
+
+  <!-- Panel C 对外交互 -->
+  <rect class="panel" x="20" y="704" width="720" height="172" rx="6"/>
+  <rect class="phead" x="20" y="704" width="720" height="32" rx="6"/>
+  <text x="34" y="726" class="ptitle">三、对外交互：入站帧 / 出站 D-Bus / 与 bmcweb 分工</text>
+
+  <text x="40" y="746" class="acc">入站（帧从哪来）：</text>
+  <text x="40" y="764" class="nl">· KCS/BT(独立仓库) / LAN 带外帧 → D-Bus execute(netFn,lun,cmd,data,options) (ipmid-new.cpp:900-904)</text>
+  <text x="40" y="782" class="nl">· 老路径 signal org.openbmc.HostIpmi.ReceivedMessage → handleLegacyIpmiCommand (:871-876, :767-808)</text>
+
+  <text x="40" y="804" class="acc">出站（调谁）：</text>
+  <text x="40" y="822" class="nl">· state-manager：读 current_power_state / 写 requested_host_transition (chassishandler.cpp:1039-1041, :891-893)</text>
+  <text x="40" y="840" class="nl">· sel-logger/phosphor-logging：日志 signal→selCacheMap (storagehandler.cpp:159-208)；sensor D-Bus 属性 (:641-642)</text>
+
+  <text x="40" y="862" class="nl">· 与 bmcweb 分工：bmcweb 走 Redfish/REST，ipmid 走 IPMI；两者并列，都经 D-Bus 操作同一批后端服务，互不经过对方</text>
+</svg>
