@@ -1,3 +1,10 @@
+
+/**
+ * @file watchdog_service.cpp
+ * @brief 看门狗服务的 D-Bus 封装（对接 watchdog 服务）。
+ */
+/*  @file watchdog_service.cpp
+ *  @brief 看门狗服务的 D-Bus 封装（对接 watchdog 服务）。 */
 #include "watchdog_service.hpp"
 
 #include <ipmid/api.hpp>
@@ -44,6 +51,7 @@ void WatchdogService::resetTimeRemaining(bool enableWatchdog)
         if (wasValid)
         {
             // Retry the request once in case the cached service was stale
+            // 重试一次请求，以防缓存的服务信息已过期
             return resetTimeRemaining(enableWatchdog);
         }
         lg2::error("WatchdogService: Method error resetting time remaining, "
@@ -71,6 +79,7 @@ WatchdogService::Properties WatchdogService::getProperties()
         if (wasValid)
         {
             // Retry the request once in case the cached service was stale
+            // 重试一次请求，以防缓存的服务信息已过期
             return getProperties();
         }
         lg2::error("WatchdogService: Method error getting properties: {ERROR}",
@@ -104,6 +113,8 @@ WatchdogService::Properties WatchdogService::getProperties()
 
     // Needed instead of elog<InternalFailure>() since the compiler can't
     // deduce the that elog<>() always throws
+    // 这里需要用 throw 代替 elog<InternalFailure>()，因为编译器无法
+    // 推断出 elog<>() 总会抛出异常
     throw std::runtime_error(
         "WatchdogService: Should not reach end of getProperties");
 }
@@ -127,6 +138,7 @@ T WatchdogService::getProperty(const std::string& key)
         if (wasValid)
         {
             // Retry the request once in case the cached service was stale
+            // 重试一次请求，以防缓存的服务信息已过期
             return getProperty<T>(key);
         }
         lg2::error("WatchdogService: Method error getting {PROPERTY}: {ERROR}",
@@ -136,6 +148,8 @@ T WatchdogService::getProperty(const std::string& key)
 
     // Needed instead of elog<InternalFailure>() since the compiler can't
     // deduce the that elog<>() always throws
+    // 这里需要用 throw 代替 elog<InternalFailure>()，因为编译器无法
+    // 推断出 elog<>() 总会抛出异常
     throw std::runtime_error(
         "WatchdogService: Should not reach end of getProperty");
 }
@@ -156,6 +170,7 @@ void WatchdogService::setProperty(const std::string& key, const T& val)
         if (wasValid)
         {
             // Retry the request once in case the cached service was stale
+            // 重试一次请求，以防缓存的服务信息已过期
             setProperty(key, val);
             return;
         }

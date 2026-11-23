@@ -1,3 +1,10 @@
+
+/**
+ * @file apphandler.cpp
+ * @brief APP/IPMI 通用命令：Get Device ID、Get Self Test Results 等。
+ */
+/* @file apphandler.cpp
+ * @brief APP/IPMI 通用命令：Get Device ID、Get Self Test Results 等。 */
 #include "config.h"
 
 #include <arpa/inet.h>
@@ -104,6 +111,12 @@ static constexpr uint8_t invalidParamSelectorEnd = 191;
  * @return On success returns the Version info from primary s/w object.
  *
  */
+/* @brief 从主软件对象返回版本信息
+ * 从给定的 softwareRoot 路径下所有实现了 RedundancyPriority
+ * 接口的软件对象中，找出 "Priority" 值最高（数字越小优先级越高）
+ * 且 "Purpose" 为 "BMC" 的处于活动状态的对象，
+ * 获取其版本信息。
+ * @return 成功时返回主软件对象的版本信息。 */
 std::string getActiveSoftwareVersionInfo(ipmi::Context::ptr ctx)
 {
     std::string revision{};
@@ -187,6 +200,7 @@ bool getCurrentBmcStateWithFallback(ipmi::Context::ptr ctx,
                                     const bool fallbackAvailability)
 {
     // Get the Inventory object implementing the BMC interface
+    // 获取实现了 BMC 接口的 Inventory 对象
     ipmi::DbusObjectInfo bmcObject;
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, BMCState::interface, "/", {}, bmcObject);
@@ -224,6 +238,7 @@ enum class PowerStateType : uint8_t
 };
 
 // Defined in 20.6 of ipmi doc
+// 在 ipmi 文档第 20.6 节中定义
 enum class PowerState : uint8_t
 {
     s0G0D0 = 0x00,
@@ -306,6 +321,10 @@ bool isValidACPIState(acpi_state::PowerStateType type, uint8_t state)
  *
  * @return IPMI completion code on success
  **/
+/* @brief 实现 Set ACPI Power State（设置 ACPI 电源状态）命令
+ * @param sysAcpiState - 要设置的 ACPI 系统电源状态
+ * @param devAcpiState - 要设置的 ACPI 设备电源状态
+ * @return 成功时返回 IPMI 完成码 */
 ipmi::RspType<> ipmiSetAcpiPowerState(
     ipmi::Context::ptr ctx, uint8_t sysAcpiState, uint8_t devAcpiState)
 {
@@ -316,6 +335,7 @@ ipmi::RspType<> ipmiSetAcpiPowerState(
     if (sysAcpiState & acpi_state::stateChanged)
     {
         // set system power state
+        // 设置系统电源状态
         s = sysAcpiState & ~acpi_state::stateChanged;
 
         if (!acpi_state::isValidACPIState(
@@ -326,6 +346,7 @@ ipmi::RspType<> ipmiSetAcpiPowerState(
         }
 
         // valid input
+        // 有效输入
         if (s == static_cast<uint8_t>(acpi_state::PowerState::noChange))
         {
             lg2::debug("No change for system power state");
@@ -366,6 +387,7 @@ ipmi::RspType<> ipmiSetAcpiPowerState(
     if (devAcpiState & acpi_state::stateChanged)
     {
         // set device power state
+        // 设置设备电源状态
         s = devAcpiState & ~acpi_state::stateChanged;
         if (!acpi_state::isValidACPIState(
                 acpi_state::PowerStateType::devPowerState, s))
@@ -375,6 +397,7 @@ ipmi::RspType<> ipmiSetAcpiPowerState(
         }
 
         // valid input
+        // 有效输入
         if (s == static_cast<uint8_t>(acpi_state::PowerState::noChange))
         {
             lg2::debug("No change for device power state");
@@ -421,6 +444,10 @@ ipmi::RspType<> ipmiSetAcpiPowerState(
  *   -  ACPI system power state
  *   -  ACPI device power state
  **/
+/*  @brief 实现 get ACPI power state（获取 ACPI 电源状态）命令
+ *  @return 成功时返回 IPMI 完成码及响应数据。
+ *   -  ACPI 系统电源状态
+ *   -  ACPI 设备电源状态 */
 ipmi::RspType<uint8_t, // acpiSystemPowerState
               uint8_t  // acpiDevicePowerState
               >
@@ -472,40 +499,59 @@ typedef struct
 } Revision;
 
 /* Use regular expression searching matched pattern X.Y, and convert it to  */
+/* 使用正则表达式搜索匹配的 X.Y 模式，并将其转换为 */
 /* Major (X) and Minor (Y) version.                                         */
 /* Example:                                                                 */
+/* 示例： */
 /* version = 2.14.0-dev                                                     */
+/* version = 2.14.0-dev */
 /*           ^ ^                                                            */
 /*           | |---------------- Minor                                      */
 /*           |------------------ Major                                      */
+/* |------------------ 主版本(Major) */
 /*                                                                          */
 /* Default regex string only tries to match Major and Minor version.        */
+/* 默认正则字符串只尝试匹配主版本号和次版本号。 */
 /*                                                                          */
 /* To match more firmware version info, platforms need to define it own     */
+/* 要匹配更多固件版本信息，平台需要定义自己的 */
 /* regex string to match more strings, and assign correct mapping index in  */
 /* matches array.                                                           */
+/* matches 数组中指定正确的映射索引。 */
 /*                                                                          */
 /* matches[0]: matched index for major ver                                  */
+/* matches[0]: 主版本号的匹配索引 */
 /* matches[1]: matched index for minor ver                                  */
 /* matches[2]: matched index for aux[0] (set 0 to skip)                     */
+/* matches[2]: 辅助字节 aux[0] 的匹配索引（设为 0 则跳过） */
 /* matches[3]: matched index for aux[1] (set 0 to skip)                     */
 /* matches[4]: matched index for aux[2] (set 0 to skip)                     */
+/* matches[4]: 辅助字节 aux[2] 的匹配索引（设为 0 则跳过） */
 /* matches[5]: matched index for aux[3] (set 0 to skip)                     */
 /* Example:                                                                 */
+/* 示例： */
 /* regex = "([\d]+).([\d]+).([\d]+)-dev-([\d]+)-g([0-9a-fA-F]{2})           */
+/* regex = "([\d]+).([\d]+).([\d]+)-dev-([\d]+)-g([0-9a-fA-F]{2}) */
 /*          ([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})"               */
+/* ([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})" */
 /* matches = {1,2,5,6,7,8}                                                  */
+/* matches = {1,2,5,6,7,8} */
 /* version = 2.14.0-dev-750-g37a7c5ad1-dirty                                */
+/* version = 2.14.0-dev-750-g37a7c5ad1-dirty */
 /*           ^ ^  ^     ^    ^ ^ ^ ^                                        */
 /*           | |  |     |    | | | |                                        */
 /*           | |  |     |    | | | |-- Aux byte 3 (0xAD), index 8           */
 /*           | |  |     |    | | |---- Aux byte 2 (0xC5), index 7           */
+/* | |  |     |    | | |---- 辅助字节 2 (0xC5)，索引 7 */
 /*           | |  |     |    | |------ Aux byte 1 (0xA7), index 6           */
 /*           | |  |     |    |-------- Aux byte 0 (0x37), index 5           */
+/* | |  |     |    |-------- 辅助字节 0 (0x37)，索引 5 */
 /*           | |  |     |------------- Not used, index 4                    */
 /*           | |  |------------------- Not used, index 3                    */
+/* | |  |------------------- 未使用，索引 3 */
 /*           | |---------------------- Minor (14), index 2                  */
 /*           |------------------------ Major (2), index 1                   */
+/* |------------------------ 主版本 (2)，索引 1 */
 int convertVersion(std::string s, Revision& rev)
 {
     static const std::vector<size_t> matches = {
@@ -524,6 +570,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert major
+        // 转换主版本号
         {
             std::string str = m[matches[0]].str();
             const auto& [ptr, ec] =
@@ -538,6 +585,9 @@ int convertVersion(std::string s, Revision& rev)
               // have major version between 0 - 99. If the major version is
               // greater than or equal to 2000, it is treated as a year and
               // converted to 0 - 99.
+              // 主版本号应在 0 - 99 之间。如果主版本号
+              // 大于或等于 2000，则将其视为年份并
+              // 转换为 0 - 99。
                 r.major = val % 100;
             }
             else
@@ -547,6 +597,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert minor
+        // 转换次版本号
         {
             std::string str = m[matches[1]].str();
             const auto& [ptr, ec] =
@@ -559,6 +610,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert aux bytes
+        // 转换辅助字节
         {
             size_t i;
             for (i = 0; i < 4; i++)
@@ -587,6 +639,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // all matched
+        // 全部匹配
         rev = r;
         return 0;
     }
@@ -608,6 +661,18 @@ int convertVersion(std::string s, Revision& rev)
  *   - product ID (2 bytes)
  *   - AUX info (4 bytes)
  */
+/* @brief: 按照 IPMI 规范实现 Get Device ID IPMI 命令
+ *  @param[in] ctx - 指向 IPMI 上下文结构体的 shared_ptr
+ *  @returns IPMI 完成码及响应数据
+ *   - Device ID（厂商自定义）
+ *   - 设备修订号[4 位]；保留[3 位]；SDR 支持[1 位]
+ *   - 固件版本主号[7 位]（二进制编码）；可用[1 位]
+ *   - 固件版本次号（BCD 编码）
+ *   - IPMI 版本（IPMI 2.0 为 0x02）
+ *   - 设备支持（所支持选项的位域）
+ *   - 厂商 IANA ID（3 字节）
+ *   - 产品 ID（2 字节）
+ *   - AUX 信息（4 字节） */
 ipmi::RspType<uint8_t,  // Device ID
               uint8_t,  // Device Revision
               uint8_t,  // Firmware Revision Major
@@ -661,6 +726,12 @@ ipmi::RspType<uint8_t,  // Device ID
             // or self-initialization in progress.
             // The availability may change in run time, so mask here
             // and initialize later.
+            // bit7 标识设备是否可用
+            // 0=正常运行
+            // 1=设备固件、SDR 更新
+            // 或自初始化正在进行中。
+            // 可用性可能在运行时变化，因此此处先掩码，
+            // 稍后再初始化。
             devId.fw[0] = rev.major & ipmiDevIdFw1Mask;
 
             rev.minor = (rev.minor > 99 ? 99 : rev.minor);
@@ -668,6 +739,8 @@ ipmi::RspType<uint8_t,  // Device ID
 
             // The matches map decides whether the aux bytes come from the
             // firmware version or from dev_id.json.
+            // matches 映射决定辅助字节是来自
+            // 固件版本还是 dev_id.json。
             if (AUX_0_MATCH_INDEX || AUX_1_MATCH_INDEX || AUX_2_MATCH_INDEX ||
                 AUX_3_MATCH_INDEX)
             {
@@ -681,6 +754,7 @@ ipmi::RspType<uint8_t,  // Device ID
     if (!dev_id_initialized)
     {
         // IPMI Spec version 2.0
+        // IPMI 规范版本 2.0
         devId.ipmiVer = 2;
 
         std::ifstream devIdFile(filename);
@@ -716,9 +790,11 @@ ipmi::RspType<uint8_t,  // Device ID
                 }
 
                 // Set the availability of the BMC.
+                // 设置 BMC 的可用性。
                 defaultActivationSetting = data.value("availability", true);
 
                 // Don't read the file every time if successful
+                // 成功后不必每次都读取文件
                 dev_id_initialized = true;
             }
             else
@@ -735,6 +811,7 @@ ipmi::RspType<uint8_t,  // Device ID
     }
 
     // Set availability to the actual current BMC state
+    // 将可用性设置为 BMC 当前的实际状态
     devId.fw[0] &= ipmiDevIdFw1Mask;
     if (!getCurrentBmcStateWithFallback(ctx, defaultActivationSetting))
     {
@@ -772,6 +849,27 @@ ipmi::RspType<uint8_t,  // Device ID
  *
  * Note: Returning 57h does not imply that all tests were run.
  */
+/* @brief 获取自检结果（IPMI 命令 0x04，NetFn App）
+ * 响应字节 1（结果码）：
+ *   55h - 无错误，所有自检通过。
+ *   56h - 本控制器未实现自检功能。
+ *   57h - 数据或设备损坏、无法访问。
+ *   58h - 致命硬件错误。
+ *   FFh - 保留。
+ *   其他 - 设备特定的内部故障。
+ * 响应字节 2（当字节 1 = 57h 时为错误位域）：
+ *   字节 1 = 55h、56h、FFh 时：00h
+ *   字节 1 = 58h 及其他：设备特定值
+ *   字节 1 = 57h 时：自检错误位域：
+ *     [7] 无法访问 SEL 设备。
+ *     [6] 无法访问 SDR 仓库。
+ *     [5] 无法访问 BMC FRU 设备。
+ *     [4] IPMB 信号线无响应。
+ *     [3] SDR 仓库为空。
+ *     [2] BMC FRU 的内部使用区损坏。
+ *     [1] 控制器升级用 'boot block' 固件损坏。
+ *     [0] 控制器运行固件损坏。
+ * 注：返回 57h 并不表示所有测试都已执行。 */
 auto ipmiAppGetSelfTestResults(ipmi::Context::ptr ctx)
     -> ipmi::RspType<uint8_t, // result code
                      bool,    // [0] controller operational fw corrupted
@@ -805,6 +903,7 @@ auto ipmiAppGetSelfTestResults(ipmi::Context::ptr ctx)
     bool selFail = false;
 
     /* Check SEL device availability (bit[7]) */
+    /* 检查 SEL 设备可用性（bit[7]） */
     std::string selService;
     boost::system::error_code ec =
         ipmi::getService(ctx, selIntf, selObject, selService);
@@ -823,6 +922,7 @@ auto ipmiAppGetSelfTestResults(ipmi::Context::ptr ctx)
     }
 
     /* Check SDR Repository availability (bit[6]) and emptiness (bit[3]) */
+    /* 检查 SDR 仓库的可用性（bit[6]）和是否为空（bit[3]） */
     ipmi::ObjectTree sensorTree;
     ec = ipmi::getSubTree(ctx, {sensorValueIntf, sensorStateIntf}, sensorRoot,
                           sensorSubtreeDepth, sensorTree);
@@ -839,6 +939,7 @@ auto ipmiAppGetSelfTestResults(ipmi::Context::ptr ctx)
     }
 
     /* Check FRU device availability (bit[5]) */
+    /* 检查 FRU 设备可用性（bit[5]） */
     std::string fruService;
     ec = ipmi::getService(ctx, fruIntf, fruObject, fruService);
     if (!ec.value())
@@ -874,6 +975,10 @@ static std::array<uint8_t, uuidBinaryLength> rfc4122ToIpmi(std::string rfc4122)
     // Per IPMI Spec 2.0 need to convert to 16 hex bytes and reverse the byte
     // order
     // Ex: 0x2332fc2c40e66298e511f2782395a361
+    // UUID 为 RFC4122 格式。例如：61a39523-78f2-11e5-9862-e6402cfc3223
+    // 按照 IPMI 2.0 规范，需转换为 16 个十六进制字节并反转
+    // 字节顺序
+    // 例如：0x2332fc2c40e66298e511f2782395a361
     constexpr size_t uuidHexLength = (2 * uuidBinaryLength);
     constexpr size_t uuidRfc4122Length = (uuidHexLength + 4);
     std::array<uint8_t, uuidBinaryLength> uuid;
@@ -905,6 +1010,7 @@ static std::array<uint8_t, uuidBinaryLength> rfc4122ToIpmi(std::string rfc4122)
                                   Argument::ARGUMENT_VALUE(rfc4122.c_str()));
         }
         // check that exactly two ascii bytes were converted
+        // 检查是否恰好转换了两个 ASCII 字节
         if (err != 2)
         {
             elog<InvalidArgument>(Argument::ARGUMENT_NAME("rfc4122"),
@@ -920,14 +1026,19 @@ auto ipmiAppGetDeviceGuid()
 {
     // return a fixed GUID based on /etc/machine-id
     // This should match the /redfish/v1/Managers/bmc's UUID data
+    // 返回一个基于 /etc/machine-id 的固定 GUID
+    // 这应与 /redfish/v1/Managers/bmc 的 UUID 数据一致
 
     // machine specific application ID (for BMC ID)
     // generated by systemd-id128 -p new as per man page
+    // 机器特定的应用 ID（用作 BMC ID）
+    // 按照 man 手册由 systemd-id128 -p new 生成
     static constexpr sd_id128_t bmcUuidAppId = SD_ID128_MAKE(
         e0, e1, 73, 76, 64, 61, 47, da, a5, 0c, d0, cc, 64, 12, 45, 78);
 
     sd_id128_t bmcUuid;
     // create the UUID from /etc/machine-id via the systemd API
+    // 通过 systemd API 从 /etc/machine-id 创建 UUID
     sd_id128_get_machine_app_specific(bmcUuidAppId, &bmcUuid);
 
     char bmcUuidCstr[SD_ID128_STRING_MAX];
@@ -942,6 +1053,8 @@ auto ipmiAppGetBtCapabilities()
 {
     // Per IPMI 2.0 spec, the input and output buffer size must be the max
     // buffer size minus one byte to allocate space for the length byte.
+    // 根据 IPMI 2.0 规范，输入和输出缓冲区大小必须是最大
+    // 缓冲区大小减去一个字节，为长度字节留出空间。
     constexpr uint8_t nrOutstanding = 0x01;
     constexpr uint8_t inputBufferSize = MAX_IPMI_BUFFER - 1;
     constexpr uint8_t outputBufferSize = MAX_IPMI_BUFFER - 1;
@@ -962,6 +1075,8 @@ auto ipmiAppGetSystemGuid(ipmi::Context::ptr& ctx)
 
     // Read UUID property value from settings object
     // UUID is in RFC4122 format Ex: 61a39523-78f2-11e5-9862-e6402cfc3223
+    // 从 settings 对象读取 UUID 属性值
+    // UUID 为 RFC4122 格式，例如：61a39523-78f2-11e5-9862-e6402cfc3223
     std::string rfc4122Uuid{};
     boost::system::error_code ec = ipmi::getDbusProperty(
         ctx, uuidService, uuidObject, uuidInterface, uuidProperty, rfc4122Uuid);
@@ -978,6 +1093,7 @@ auto ipmiAppGetSystemGuid(ipmi::Context::ptr& ctx)
     try
     {
         // convert to IPMI format
+        // 转换为 IPMI 格式
         uuid = rfc4122ToIpmi(rfc4122Uuid);
     }
     catch (const InvalidArgument& e)
@@ -1005,6 +1121,14 @@ auto ipmiAppGetSystemGuid(ipmi::Context::ptr& ctx)
  * @return success completion code if it sets the session state to
  * tearDownInProgress else return the corresponding error completion code.
  **/
+/* @brief 将会话状态设置为 teardown
+ * 本函数用于在当前状态为 active 时，将会话状态设置为
+ * tear down in progress（正在拆除）。
+ * @param[in] ctx     - 上下文指针
+ * @param[in] service - 服务名
+ * @param[in] obj - 对象路径
+ * @return 若成功将会话状态设置为
+ * tearDownInProgress 则返回成功完成码，否则返回相应的错误完成码。 */
 uint8_t setSessionState(ipmi::Context::ptr ctx, const std::string& service,
                         const std::string& obj)
 {
@@ -1080,6 +1204,11 @@ ipmi::RspType<> ipmiAppCloseSession(ipmi::Context::ptr ctx,
             // object path will be unique for each session. Checking if
             // multiple objects exist with same object path under multiple
             // services.
+            // 会话 id 和会话 handle 对每个会话都是唯一的。
+            // 会话 id 和 handle 从对象路径获取，而
+            // 对象路径对每个会话也是唯一的。此处检查
+            // 多个服务下是否存在多个对象使用相同的
+            // 对象路径。
             if (serviceMap.size() != 1)
             {
                 return ipmi::responseUnspecifiedError();
@@ -1128,6 +1257,16 @@ uint8_t getTotalSessionCount()
  * @return success completion code if request data is valid
  * else return the corresponding error completion code.
  **/
+/* @brief 获取会话信息请求数据。
+ * 本函数校验请求数据，并取出请求中的会话 id、
+ * 会话 handle。
+ * @param[in] ctx - 当前会话的上下文。
+ * @param[in] sessionIndex - 请求的会话索引
+ * @param[in] payload - 输入的 payload
+ * @param[in] reqSessionId - 用于存放解包出的会话 Id
+ * @param[in] reqSessionHandle - 用于存放解包出的会话 handle
+ * @return 请求数据有效时返回成功完成码，
+ * 否则返回相应的错误完成码。 */
 uint8_t getSessionInfoRequestData(
     const ipmi::Context::ptr ctx, const uint8_t sessionIndex,
     ipmi::message::Payload& payload, uint32_t& reqSessionId,
@@ -1157,6 +1296,7 @@ uint8_t getSessionInfoRequestData(
                 return ipmi::ccReqDataLenInvalid;
             }
             // Check if current sessionId is 0, sessionId 0 is reserved.
+            // 检查当前 sessionId 是否为 0，sessionId 0 为保留值。
             if (ctx->sessionId == session::sessionZero)
             {
                 return session::ccInvalidSessionId;
@@ -1234,6 +1374,17 @@ static constexpr uint8_t macAddrLen = 6;
  *  @param macAddr - std::array<uint8_t, 6> mac address
  *  @param port - uint16_t remote port
  */
+/* 别名 SessionDetails - 包含某个
+ *        RMCP+ 会话的可选信息。
+ *  @param userID - uint6_t 会话用户 ID（0-63）
+ *  @param reserved - uint2_t 保留
+ *  @param privilege - uint4_t 会话权限（0-5）
+ *  @param reserved - uint4_t 保留
+ *  @param channel - uint4_t 会话通道号
+ *  @param protocol - uint4_t 会话协议
+ *  @param remoteIP - uint32_t 远端 IP 地址
+ *  @param macAddr - std::array<uint8_t, 6> MAC 地址
+ *  @param port - uint16_t 远端端口 */
 using SessionDetails =
     std::tuple<uint2_t, uint6_t, uint4_t, uint4_t, uint4_t, uint4_t, uint32_t,
                std::array<uint8_t, macAddrLen>, uint16_t>;
@@ -1249,6 +1400,15 @@ using SessionDetails =
  *                        session info
  *  @return - ipmi::Cc success or error code
  */
+/* @brief 获取指定会话的详细信息
+ *  @param[in] ctx - 用于访问 D-Bus 的 ipmi::Context 指针
+ *  @param[in] service - 从中获取详细信息的 D-Bus 服务名
+ *  @param[in] objPath - 会话的 D-Bus 对象路径
+ *  @param[out] sessionHandle - 返回该会话的 session handle
+ *  @param[out] sessionState - 返回该会话的 session state
+ *  @param[out] details - 返回包含其他会话信息的
+ *                        SessionDetails 元组
+ *  @return - ipmi::Cc 成功或错误码 */
 ipmi::Cc getSessionDetails(ipmi::Context::ptr ctx, const std::string& service,
                            const std::string& objPath, uint8_t& sessionHandle,
                            uint8_t& sessionState, SessionDetails& details)
@@ -1276,9 +1436,11 @@ ipmi::Cc getSessionDetails(ipmi::Context::ptr ctx, const std::string& service,
         std::get<0>(details) =
             ipmi::mappedVariant<uint8_t>(sessionProps, "UserID", 0xff);
         // std::get<1>(details) = 0; // (default constructed to 0)
+        // std::get<1>(details) = 0; // （默认构造为 0）
         std::get<2>(details) =
             ipmi::mappedVariant<uint8_t>(sessionProps, "CurrentPrivilege", 0);
         // std::get<3>(details) = 0; // (default constructed to 0)
+        // std::get<3>(details) = 0; // （默认构造为 0）
         std::get<4>(details) =
             ipmi::mappedVariant<uint8_t>(sessionProps, "ChannelNum", 0xff);
         constexpr uint4_t rmcpPlusProtocol = 1;
@@ -1286,6 +1448,7 @@ ipmi::Cc getSessionDetails(ipmi::Context::ptr ctx, const std::string& service,
         std::get<6>(details) =
             ipmi::mappedVariant<uint32_t>(sessionProps, "RemoteIPAddr", 0);
         // std::get<7>(details) = {{0}}; // default constructed to all 0
+        // std::get<7>(details) = {{0}}; // 默认构造为全 0
         std::get<8>(details) =
             ipmi::mappedVariant<uint16_t>(sessionProps, "RemotePort", 0);
     }
@@ -1303,6 +1466,7 @@ ipmi::RspType<uint8_t, // session handle,
     uint32_t reqSessionId = 0;
     uint8_t reqSessionHandle = session::defaultSessionHandle;
     // initializing state to 0xff as 0 represents state as inactive.
+    // 将 state 初始化为 0xff，因为 0 表示状态为 inactive（未激活）。
     uint8_t state = 0xFF;
 
     uint8_t completionCode = getSessionInfoRequestData(
@@ -1397,6 +1561,11 @@ std::optional<std::string> getSysFWVersion(ipmi::Context::ptr& ctx)
      * - Get the Purpose property of above object paths.
      * - If the Purpose is Host then get the Version property.
      */
+    /* 系统固件版本通过以下步骤检测：
+     * - 获取所有包含
+     * "xyz.openbmc_project.Software.Version" 接口的对象路径。
+     * - 获取上述对象路径的 Purpose 属性。
+     * - 若 Purpose 为 Host，则获取 Version 属性。 */
     ipmi::ObjectTree objectTree;
     boost::system::error_code ec =
         ipmi::getAllDbusObjects(ctx, softwareRoot, versionIntf, objectTree);
@@ -1445,6 +1614,7 @@ static std::unique_ptr<SysInfoParamStore> sysInfoParamStore;
 static std::string sysInfoReadSystemName()
 {
     // Use the BMC hostname as the "System Name."
+    // 使用 BMC 主机名作为 "System Name"。
     char hostname[HOST_NAME_MAX + 1] = {};
     if (gethostname(hostname, HOST_NAME_MAX) != 0)
     {
@@ -1524,6 +1694,7 @@ ipmi::RspType<uint8_t,                // Parameter revision
     if (paramSelector == IPMI_SYSINFO_SYSTEM_FW_VERSION)
     {
         // If the system firmware version is not cached, get it from the D-Bus.
+        // 如果未缓存系统固件版本，则从 D-Bus 获取。
         const auto& [found, paramString] =
             sysInfoParamStore->lookup(IPMI_SYSINFO_SYSTEM_FW_VERSION);
 
@@ -1540,6 +1711,7 @@ ipmi::RspType<uint8_t,                // Parameter revision
     }
 
     // Parameters other than Set In Progress are assumed to be strings.
+    // 除 Set In Progress 外的参数均假定为字符串。
     std::tuple<bool, std::string> ret =
         sysInfoParamStore->lookup(paramSelector);
     bool found = std::get<0>(ret);
@@ -1561,6 +1733,7 @@ ipmi::RspType<uint8_t,                // Parameter revision
                     configData.begin() + configDataOverhead); // 14 bytes chunk
 
         // Append zero's to remaining bytes
+        // 剩余字节补 0
         if (configData.size() < configParameterLength)
         {
             std::fill_n(std::back_inserter(configData),
@@ -1599,11 +1772,14 @@ ipmi::RspType<> ipmiAppSetSystemInfo(uint8_t paramSelector, uint8_t data1,
     {
         // attempt to set the 'set in progress' value (in parameter #0)
         // when not in the set complete state.
+        // 尝试在非 set complete 状态下
+        // 设置 'set in progress' 值（参数 #0）。
         if ((transferStatus != setComplete) && (data1 == setInProgress))
         {
             return ipmi::responseSetInProgressActive();
         }
         // only following 2 states are supported
+        // 仅支持以下 2 种状态
         if (data1 > setInProgress)
         {
             lg2::error("illegal SetInProgress status");
@@ -1620,6 +1796,7 @@ ipmi::RspType<> ipmiAppSetSystemInfo(uint8_t paramSelector, uint8_t data1,
     }
 
     // Append zero's to remaining bytes
+    // 剩余字节补 0
     if (configData.size() < configParameterLength)
     {
         fill_n(back_inserter(configData),
@@ -1634,6 +1811,7 @@ ipmi::RspType<> ipmiAppSetSystemInfo(uint8_t paramSelector, uint8_t data1,
     }
 
     // lookup
+    // 查找
     std::tuple<bool, std::string> ret =
         sysInfoParamStore->lookup(paramSelector);
     bool found = std::get<0>(ret);
@@ -1641,6 +1819,7 @@ ipmi::RspType<> ipmiAppSetSystemInfo(uint8_t paramSelector, uint8_t data1,
     if (!found)
     {
         // parameter does not exist. Init new
+        // 参数不存在。初始化新参数。
         paramString = "";
     }
 
@@ -1738,6 +1917,26 @@ static bool populateI2CControllerWRAllowlist()
         //      "command": "0x05 0x00",
         //      "commandMask": "0x00 0xFF"
         //    },]
+        // JSON 结构示例格式
+        // "filters": [
+        //    {
+        //      "Description": "允许完全读取 - 忽略 0x40 到 0x4F 的
+        //      第一个字节写入值",
+        //      "busId": "0x01",
+        //      "slaveAddr": "0x40",
+        //      "slaveAddrMask": "0x0F",
+        //      "command": "0x00",
+        //      "commandMask": "0xFF"
+        //    },
+        //    {
+        //      "Description": "允许完全读取 - 第一个字节匹配 0x05 且
+        //      忽略第二个字节",
+        //      "busId": "0x01",
+        //      "slaveAddr": "0x57",
+        //      "slaveAddrMask": "0x00",
+        //      "command": "0x05 0x00",
+        //      "commandMask": "0x00 0xFF"
+        //    },]
 
         nlohmann::json filters = data[filtersStr].get<nlohmann::json>();
         std::vector<i2cControllerWRAllowlist>& allowlist = getWRAllowlist();
@@ -1817,6 +2016,8 @@ static bool isCmdAllowlisted(uint8_t busId, uint8_t targetAddr,
             const std::vector<uint8_t>& dataMask = wlEntry.dataMask;
             // Skip as no-match, if requested write data is more than the
             // write data mask size
+            // 如果请求的写入数据长度超过
+            // 写入数据掩码大小，则按不匹配跳过。
             if (writeData.size() > dataMask.size())
             {
                 continue;
@@ -1850,6 +2051,17 @@ static bool populateI2CControllerWRAllowlist()
  *  @returns IPMI completion code plus response data
  *   - readData - i2c response data
  */
+/* @brief 实现 controller write read IPMI 命令，可用于
+ * 底层 I2C/SMBus 的写、读或写-读访问
+ *  @param isPrivateBus - 表示是否使用私有总线
+ *  @param busId - 总线 id
+ *  @param channelNum - 通道号
+ *  @param reserved - 跳过 1 位
+ *  @param targetAddr - 目标地址
+ *  @param read count - 要读取的字节数
+ *  @param writeData - 要写入的数据
+ *  @returns IPMI 完成码及响应数据
+ *   - readData - i2c 响应数据 */
 ipmi::RspType<std::vector<uint8_t>> ipmiControllerWriteRead(
     [[maybe_unused]] bool isPrivateBus, uint3_t busId,
     [[maybe_unused]] uint4_t channelNum, bool reserved, uint7_t targetAddr,
@@ -1892,16 +2104,19 @@ ipmi::RspType<std::vector<uint8_t>> ipmiControllerWriteRead(
 void registerNetFnAppFunctions()
 {
     // <Get Device ID>
+    // <Get Device ID（获取设备 ID）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetDeviceId, ipmi::Privilege::User,
                           ipmiAppGetDeviceId);
 
     // <Get BT Interface Capabilities>
+    // <Get BT Interface Capabilities（获取 BT 接口能力）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetBtIfaceCapabilities,
                           ipmi::Privilege::User, ipmiAppGetBtCapabilities);
 
     // <Reset Watchdog Timer>
+    // <Reset Watchdog Timer（复位看门狗定时器）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdResetWatchdogTimer,
                           ipmi::Privilege::Operator, ipmiAppResetWatchdogTimer);
@@ -1911,6 +2126,7 @@ void registerNetFnAppFunctions()
                           ipmiAppGetSessionInfo);
 
     // <Set Watchdog Timer>
+    // <Set Watchdog Timer（设置看门狗定时器）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdSetWatchdogTimer,
                           ipmi::Privilege::Operator, ipmiSetWatchdogTimer);
@@ -1920,56 +2136,70 @@ void registerNetFnAppFunctions()
                           ipmiAppCloseSession);
 
     // <Get Watchdog Timer>
+    // <Get Watchdog Timer（获取看门狗定时器）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetWatchdogTimer, ipmi::Privilege::User,
                           ipmiGetWatchdogTimer);
 
     // <Get Self Test Results>
+    // <Get Self Test Results（获取自检结果）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetSelfTestResults,
                           ipmi::Privilege::User, ipmiAppGetSelfTestResults);
 
     // <Get Device GUID>
+    // <Get Device GUID（获取设备 GUID）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetDeviceGuid, ipmi::Privilege::User,
                           ipmiAppGetDeviceGuid);
 
     // <Set ACPI Power State>
+    // <Set ACPI Power State（设置 ACPI 电源状态）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdSetAcpiPowerState,
                           ipmi::Privilege::Admin, ipmiSetAcpiPowerState);
     // <Get ACPI Power State>
+    // <Get ACPI Power State（获取 ACPI 电源状态）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetAcpiPowerState,
                           ipmi::Privilege::User, ipmiGetAcpiPowerState);
 
     // Note: For security reason, this command will be registered only when
     // there are proper I2C Controller write read allowlist
+    // 注：出于安全考虑，只有在存在合适的
+    // I2C Controller write read 允许列表时才注册此命令。
     if (populateI2CControllerWRAllowlist())
     {
         // Note: For security reasons, registering controller write read as
         // admin privilege command, even though IPMI 2.0 specification allows it
         // as operator privilege.
+        // 注：出于安全考虑，将 controller write read 注册为
+        // 管理员权限命令，尽管 IPMI 2.0 规范允许其
+        // 以操作员权限执行。
         ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                               ipmi::app::cmdMasterWriteRead,
                               ipmi::Privilege::Admin, ipmiControllerWriteRead);
     }
 
     // <Get System GUID Command>
+    // <Get System GUID（获取系统 GUID）命令>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetSystemGuid, ipmi::Privilege::User,
                           ipmiAppGetSystemGuid);
 
     // <Get Channel Cipher Suites Command>
+    // <Get Channel Cipher Suites（获取通道密码套件）命令>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetChannelCipherSuites,
                           ipmi::Privilege::None, getChannelCipherSuites);
 
     // <Get System Info Command>
+    // <Get System Info（获取系统信息）命令>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetSystemInfoParameters,
                           ipmi::Privilege::User, ipmiAppGetSystemInfo);
     // <Set System Info Command>
+    // <Set System Info（设置系统信息）命令>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdSetSystemInfoParameters,
                           ipmi::Privilege::Admin, ipmiAppSetSystemInfo);

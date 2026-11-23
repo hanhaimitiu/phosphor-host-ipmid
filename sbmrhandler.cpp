@@ -1,3 +1,10 @@
+
+/**
+ * @file sbmrhandler.cpp
+ * @brief SBMR OEM 命令的处理。
+ */
+/* @file sbmrhandler.cpp
+ * @brief SBMR OEM 命令的处理。 */
 #include <ipmid/api.hpp>
 #include <ipmid/filter.hpp>
 #include <ipmid/utils.hpp>
@@ -15,19 +22,23 @@ constexpr auto bootProgressSystemInitComplete = "SystemInitComplete";
 constexpr auto bootProgressSystemSetup = "SystemSetup";
 
 // EFI_STATUS_CODE_TYPE
+// EFI_STATUS_CODE_TYPE
 constexpr auto efiProgressCode = 0x01;
 constexpr auto efiCodeSeverityNone = 0;
 
 // EFI_STATUS_CODE_CLASS
+// EFI_STATUS_CODE_CLASS
 constexpr auto efiIoBus = 0x02;
 constexpr auto efiSoftware = 0x03;
 
+// EFI_STATUS_CODE_SUBCLASS
 // EFI_STATUS_CODE_SUBCLASS
 constexpr auto efiIoBusPci = 0x01;
 constexpr auto efiSoftwareDxeCore = 0x04;
 constexpr auto efiSoftwareDxeBsDriver = 0x05;
 constexpr auto efiSoftwareEfiBootService = 0x10;
 
+// EFI_STATUS_CODE_OPERATION
 // EFI_STATUS_CODE_OPERATION
 constexpr auto efiIoBusPciResAlloc = 0x0110;
 constexpr auto efiSwDxeCorePcHandoffToNext = 0x0110;
@@ -45,12 +56,14 @@ std::string getSbmrBootProgressStage(uint8_t codeType, uint8_t codeSeverity,
                                      uint16_t codeOperation)
 {
     // Return OEM if code type or severity are unexpected
+    // 若代码类型或严重级别意外，则返回 OEM
     if (codeType != efiProgressCode || codeSeverity != efiCodeSeverityNone)
     {
         return bootProgressOem;
     }
 
     // Code Class Software
+    // 代码类别：Software（软件）
     if (codeClass == efiSoftware)
     {
         if (codeSubClass == efiSoftwareDxeCore &&
@@ -75,6 +88,7 @@ std::string getSbmrBootProgressStage(uint8_t codeType, uint8_t codeSeverity,
         }
     }
     // Code Class IO Bus
+    // 代码类别：IO Bus（IO 总线）
     else if (codeClass == efiIoBus)
     {
         if (codeSubClass == efiIoBusPci && codeOperation == efiIoBusPciResAlloc)
@@ -84,6 +98,7 @@ std::string getSbmrBootProgressStage(uint8_t codeType, uint8_t codeSeverity,
     }
 
     // Fallback to OEM if no conditions met
+    // 若不满足任何条件则回退到 OEM
     return bootProgressOem;
 }
 
@@ -95,6 +110,7 @@ bool updateBootProgressProperty(ipmi::Context::ptr& ctx,
     ipmi::DbusObjectInfo sbmrHostStateObject{};
 
     /* Get Host State Object */
+    /* 获取 Host State 对象 */
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, sbmrHostStateIntf, sbmrHostStateObject);
     if (ec.value())
@@ -105,6 +121,7 @@ bool updateBootProgressProperty(ipmi::Context::ptr& ctx,
     }
 
     /* Set Host State property */
+    /* 设置 Host State 属性 */
     ec = ipmi::setDbusProperty(ctx, sbmrHostStateObject.second,
                                sbmrHostStateObject.first, sbmrHostStateIntf,
                                "BootProgress", bootProgress);
@@ -125,6 +142,7 @@ bool updateBootProgressLastUpdateProperty(ipmi::Context::ptr& ctx,
     ipmi::DbusObjectInfo sbmrHostStateObject{};
 
     /* Get Host State Object */
+    /* 获取 Host State 对象 */
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, sbmrHostStateIntf, sbmrHostStateObject);
     if (ec.value())
@@ -135,6 +153,7 @@ bool updateBootProgressLastUpdateProperty(ipmi::Context::ptr& ctx,
     }
 
     /* Set Host State property */
+    /* 设置 Host State 属性 */
     ec = ipmi::setDbusProperty(ctx, sbmrHostStateObject.second,
                                sbmrHostStateObject.first, sbmrHostStateIntf,
                                "BootProgressLastUpdate", timeStamp);
@@ -156,9 +175,11 @@ ipmi::RspType<> sendBootProgressCode(
     uint8_t instance)
 {
     /* Update boot progress code to Dbus property */
+    /* 将启动进度码更新到 Dbus 属性 */
     ipmi::DbusObjectInfo sbmrBootStateObject{};
 
     /* Get Boot State Object */
+    /* 获取 Boot State 对象 */
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, sbmrBootStateIntf, sbmrBootStateObject);
     if (ec.value())
@@ -169,6 +190,7 @@ ipmi::RspType<> sendBootProgressCode(
     }
 
     /* Set Boot State property */
+    /* 设置 Boot State 属性 */
     BootProgressCode bpCode(
         {codeType, codeReserved1, codeReserved2, codeSeverity, codeOperation1,
          codeOperation2, codeSubClass, codeClass, instance},
@@ -184,6 +206,7 @@ ipmi::RspType<> sendBootProgressCode(
     }
 
     /* Update Redfish BootProgress object */
+    /* 更新 Redfish BootProgress 对象 */
     auto timeStamp = std::chrono::duration_cast<std::chrono::microseconds>(
                          std::chrono::system_clock::now().time_since_epoch())
                          .count();
@@ -193,6 +216,7 @@ ipmi::RspType<> sendBootProgressCode(
     }
 
     /* Check for BootProgressTypes */
+    /* 检查 BootProgressTypes */
     uint16_t codeOperation =
         static_cast<uint16_t>(codeOperation1) << 8 | codeOperation2;
 
@@ -221,6 +245,7 @@ ipmi::RspType<uint8_t, // STATUS_CODE_TYPE
     ipmi::DbusObjectInfo sbmrBootStateObject{};
 
     /* Get Boot State Object */
+    /* 获取 Boot State 对象 */
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, sbmrBootStateIntf, sbmrBootStateObject);
     if (ec.value())
@@ -231,6 +256,7 @@ ipmi::RspType<uint8_t, // STATUS_CODE_TYPE
     }
 
     /* Get Boot State property */
+    /* 获取 Boot State 属性 */
     BootProgressCode value;
     ec = ipmi::getDbusProperty(ctx, sbmrBootStateObject.second,
                                sbmrBootStateObject.first, sbmrBootStateIntf,
@@ -276,6 +302,7 @@ ipmi::Cc sbmrFilterCommands(ipmi::message::Request::ptr request)
         request->ctx->group != ipmi::groupSBMR)
     {
         // Skip if not group SBMR
+        // 若不是 SBMR 组则跳过
         return ipmi::ccSuccess;
     }
 

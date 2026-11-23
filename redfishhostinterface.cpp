@@ -1,3 +1,10 @@
+
+/**
+ * @file redfishhostinterface.cpp
+ * @brief Redfish Host Interface（USB/NIC 虚拟 IPMI 通道）的实现。
+ */
+/* @file redfishhostinterface.cpp
+ * @brief Redfish Host Interface（USB/NIC 虚拟 IPMI 通道）的实现。 */
 /*
  * Copyright (c) 2025 Ampere Computing LLC
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* Copyright (c) 2025 Ampere Computing LLC
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. */
 
 #include <openssl/bio.h>
 #include <openssl/ec.h>
@@ -45,6 +62,7 @@ constexpr Cmd cmdGetMngCertFingerprint = 0x01;
 } // namespace bootStrap
 
 /* helper functions for the various bootStrap command error response types */
+/* 各种 bootStrap 命令错误响应类型的辅助函数 */
 static inline auto responseCmdDisabled()
 {
     constexpr Cc ccCredsBootstrapDisabled = 0x80;
@@ -63,6 +81,10 @@ static inline auto responseCertsNumberInvalid()
  * itself drives (KCS/BT via the system interface, SMBus/SSIF, USB, ...) is
  * acceptable; network-based media are not, since the bootstrap credentials
  * must not be obtainable from off-platform. */
+/* Redfish host interface 是主机本地通道。主机自身驱动的
+ * 任何介质（通过系统接口的 KCS/BT、SMBus/SSIF、USB 等）都可接受；
+ * 基于网络的介质则不行，因为 bootstrap 凭据
+ * 不得从平台外部获取。 */
 bool checkRHIAllowedMediumType(const uint8_t& mediumType)
 {
     switch (static_cast<ipmi::EChannelMediumType>(mediumType))
@@ -103,6 +125,8 @@ std::shared_ptr<X509> loadCert(const std::string& filePath)
  *
  *  @returns 1 - enabled, 0 - disabled, std::nullopt if error
  */
+/* @brief 实现获取 CredentialBootstrapping 的 Enabled 属性
+ *  @returns 1 - 启用，0 - 禁用，出错时返回 std::nullopt */
 std::optional<bool> getCredentialBootstrapEnabledProperty(
     ipmi::Context::ptr ctx)
 {
@@ -130,6 +154,11 @@ std::optional<bool> getCredentialBootstrapEnabledProperty(
  *  @returns IPMI completion code plus response data for
  *   - the Get manager certificate fingerprint command
  */
+/* @brief 实现 Get manager certificate fingerprint（获取管理器证书指纹）命令
+ *  @param[in] ctx - 指向 IPMI 上下文结构体的 shared_ptr
+ *  @param[in] certNum - 证书编号
+ *  @returns IPMI 完成码及响应数据，适用于
+ *   - Get manager certificate fingerprint 命令 */
 ipmi::RspType<uint8_t,              // hash type
               std::vector<uint8_t>> // hash data
     getFingerprint(ipmi::Context::ptr ctx, uint8_t certNum)
@@ -142,6 +171,8 @@ ipmi::RspType<uint8_t,              // hash type
 
     /* Get Enabled property within the CredentialBootstrapping property of the
      * host interface. */
+    /* 获取 host 接口的 CredentialBootstrapping 属性中的
+     * Enabled 属性。 */
     auto enabledState = getCredentialBootstrapEnabledProperty(ctx);
     if (!enabledState || (*enabledState == false))
     {
@@ -166,6 +197,7 @@ ipmi::RspType<uint8_t,              // hash type
     }
 
     /* 32 bytes of the fingerprint */
+    /* 指纹的 32 个字节 */
     constexpr size_t maxFingerPrintLength = 32;
     if (cnBufferLen != maxFingerPrintLength)
     {
@@ -184,6 +216,7 @@ ipmi::Cc filterRHICommands(ipmi::message::Request::ptr request)
         request->ctx->group != ipmi::groupRedfish)
     {
         // Skip if not group SBMR
+        // 若不是 SBMR 组则跳过
         return ipmi::ccSuccess;
     }
 

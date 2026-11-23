@@ -19,6 +19,7 @@ using ::testing::IsEmpty;
 TEST(ValidateJson, FailWithNonArrayReturnsEmpty)
 {
     /* The entity map input json is expected to be an array of objects. */
+    /* entity map 输入的 json 应为一个对象数组。 */
     auto j = R"(
         {
             "id" : 1,
@@ -43,6 +44,8 @@ TEST(ValidateJson, FailWithMissingFieldReturnsEmpty)
     /* There are many required fields, let's just validate that if one is
      * missing, it returns the empty map.
      */
+    /* 必填字段有很多，这里只验证如果缺少
+     * 其中一个字段，是否会返回空 map。 */
     auto j = R"(
         [
             {
@@ -68,6 +71,8 @@ TEST(ValidateJson, AllValidEntryReturnsExpectedMap)
     /* Boring test where we provide completely valid information and expect the
      * resulting map contains that information.
      */
+    /* 常规测试：提供完全合法的信息，并期望
+     * 生成的 map 包含这些信息。 */
     auto j = R"(
         [
             {
@@ -92,6 +97,7 @@ TEST(ValidateJson, AllValidEntryReturnsExpectedMap)
     EXPECT_EQ(entry->first, 1);
 
     /* TODO: someone could write an equality operator for this object. */
+    /* TODO：可以为该对象编写一个相等比较运算符。 */
     EXPECT_EQ(entry->second.containerEntityId, 2);
     EXPECT_EQ(entry->second.containerEntityInstance, 3);
     EXPECT_FALSE(entry->second.isList);
@@ -107,6 +113,8 @@ TEST(ValidateJson, EntryHasInsufficientContainerEntryCountReturnsEmpty)
     /* The container must have four pairs. (I don't know why, and maybe this
      * restriction will change).
      */
+    /* container 必须有四个键值对。（我不知道为什么，
+     * 也许这个限制以后会变。） */
     auto j = R"(
         [
             {
@@ -130,6 +138,7 @@ TEST(ValidateJson, EntryHasInsufficientContainerEntryCountReturnsEmpty)
 TEST(ValidateJson, ThereAreTwoEntriesOneInvalidReturnsEmpty)
 {
     /* If any entry in the file is corrupt, the file is disregarded. */
+    /* 如果文件中有任何条目损坏，则忽略整个文件。 */
     auto j = R"(
         [
             {
@@ -166,6 +175,7 @@ TEST(ValidateJson, ThereAreTwoEntriesOneInvalidReturnsEmpty)
 TEST(ValidateJson, ThereAreTwoEntriesBothValidReturnsBoth)
 {
     /* The map supports more than one entry, just validate this. */
+    /* map 支持多个条目，这里仅验证这一点。 */
     auto j = R"(
         [
             {

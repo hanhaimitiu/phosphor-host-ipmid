@@ -1,3 +1,10 @@
+
+/**
+ * @file sdrutils.cpp
+ * @brief SDR（Sensor Data Record）工具函数的实现。
+ */
+/*  @file sdrutils.cpp
+ *  @brief SDR（Sensor Data Record）工具函数的实现。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/* // 版权所有 (c) 2018 Intel Corporation
+ * //
+ * // 根据 Apache 许可证 2.0 版（"License"）授权；
+ * // 除非符合许可证的规定，否则不得使用本文件。
+ * // 你可以从以下地址获取许可证副本：
+ * //
+ * //      http://www.apache.org/licenses/LICENSE-2.0
+ * //
+ * // 除非适用法律要求或书面同意，否则本软件
+ * // 按"原样"分发，
+ * // 不提供任何明示或暗示的保证或条件。
+ * // 有关许可证下的具体权限和限制，请参阅许可证
+ * // 本身。 */
 
 #include "dbus-sdr/sdrutils.hpp"
 
@@ -89,6 +109,10 @@ namespace details
 // Trim the list of sensors, via a configuration file.
 // Read the IPMI Sensor Filtering section in docs/configuration.md for
 // a more detailed description.
+// IPMI 支持的传感器数量少于通过 Redfish 可用的数量。
+// 通过一个配置文件裁剪传感器列表。
+// 更详细的说明请参阅 docs/configuration.md 中的
+// IPMI Sensor Filtering 一节。
 static void filterSensors(SensorSubTree& subtree)
 {
     constexpr const char* filterFilename =
@@ -179,6 +203,7 @@ uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree)
     };
 
     // Add sensors to SensorTree
+    // 将传感器添加到 SensorTree
     static constexpr const std::array sensorInterfaces = {
         SensorValue::interface, "xyz.openbmc_project.Sensor.ValueMutability",
         SensorThresholdWarning::interface, SensorThresholdCritical::interface};
@@ -195,6 +220,7 @@ uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree)
         for (const auto& sensor : ipmi::sensor::sensors)
         {
             // Threshold sensors should not be emplaced in here.
+            // 阈值传感器不应在此处放置（emplace）。
             if (sensor.second.sensorPath.starts_with(
                     "/xyz/openbmc_project/sensors/"))
             {
@@ -204,6 +230,9 @@ uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree)
             // The bus service name is not listed in ipmi::sensor::Info. Give it
             // an empty string. For those function using non-threshold sensors,
             // the bus service name will be retrieved in an alternative way.
+            // 总线服务名称未在 ipmi::sensor::Info 中列出，
+            // 给它一个空字符串。对于使用非阈值传感器的函数，
+            // 总线服务名称将以另一种方式获取。
             boost::container::flat_map<std::string, std::vector<std::string>>
                 connectionMap{
                     {"", {sensor.second.propertyInterfaces.begin()->first}}};
@@ -214,6 +243,7 @@ uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree)
 #endif
 
     // Error if searching for sensors failed.
+    // 如果搜索传感器失败则报错。
     if (!sensorRez)
     {
         return sensorUpdatedIndex;
@@ -221,11 +251,13 @@ uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree)
 
     filterSensors(*sensorTreePtr);
     // Add VR control as optional search path.
+    // 将 VR 控制添加为可选的搜索路径。
     (void)lbdUpdateSensorTree("/xyz/openbmc_project/vr", vrInterfaces);
 
     subtree = sensorTreePtr;
     sensorUpdatedIndex++;
     // The SDR is being regenerated, wipe the old stats
+    // 正在重新生成 SDR，清除旧的统计信息
     sdrStatsTable.wipeTable();
     sdrWriteTable.wipeTable();
     return sensorUpdatedIndex;
@@ -266,11 +298,13 @@ bool getSensorNumMap(std::shared_ptr<SensorNumMap>& sensorNumMap)
         else if (sensorIndex == (lun1Sensor0 | maxSensorsPerLUN))
         {
             // Skip assigning LUN 0x2 any sensors
+            // 跳过为 LUN 0x2 分配任何传感器
             sensorIndex = lun3Sensor0;
         }
         else if (sensorIndex == (lun3Sensor0 | maxSensorsPerLUN))
         {
             // this is an error, too many IPMI sensors
+            // 这是一个错误，IPMI 传感器过多
             throw std::out_of_range("Maximum number of IPMI sensors exceeded.");
         }
         sensorNum = sensorIndex;
@@ -296,6 +330,7 @@ bool getSensorSubtree(SensorSubTree& subtree)
 
 #ifdef FEATURE_HYBRID_SENSORS
 // Static sensors are listed in sensor-gen.cpp.
+// 静态传感器列在 sensor-gen.cpp 中。
 ipmi::sensor::IdInfoMap::const_iterator findStaticSensor(
     const std::string& path)
 {
@@ -311,6 +346,8 @@ std::string getSensorTypeStringFromPath(const std::string& path)
 {
     // get sensor type string from path, path is defined as
     // /xyz/openbmc_project/sensors/<type>/label
+    // 从路径中获取传感器类型字符串，路径定义为
+    // /xyz/openbmc_project/sensors/<type>/label
     size_t typeEnd = path.rfind("/");
     if (typeEnd == std::string::npos)
     {
@@ -322,6 +359,7 @@ std::string getSensorTypeStringFromPath(const std::string& path)
         return path;
     }
     // Start at the character after the '/'
+    // 从 '/' 之后的字符开始
     typeStart++;
     return path.substr(typeStart, typeEnd - typeStart);
 }
@@ -448,6 +486,8 @@ std::map<std::string, Value> getEntityManagerProperties(const char* path,
 
 // Fetch the ipmiDecoratorPaths to get the list of dbus objects that
 // have ipmi decorator to prevent unnecessary dbus call to fetch the info
+// 获取 ipmiDecoratorPaths 以得到带有 ipmi 装饰器的 dbus 对象列表，
+// 避免不必要的 dbus 调用来获取信息
 std::optional<std::unordered_set<std::string>>& getIpmiDecoratorPaths(
     const std::optional<ipmi::Context::ptr>& ctx)
 {
@@ -490,6 +530,8 @@ const std::string* getSensorConfigurationInterface(
 
     // Find the fan configuration first (fans can have multiple configuration
     // interfaces).
+    // 先查找风扇配置（风扇可以有多个配置
+    // 接口）。
     for (const auto& entry : entityManagerService->second)
     {
         if (entry == "xyz.openbmc_project.Configuration.AspeedFan" ||
@@ -513,6 +555,8 @@ const std::string* getSensorConfigurationInterface(
 
 // Follow Association properties for Sensor back to the Board dbus object to
 // check for an EntityId and EntityInstance property.
+// 沿着 Sensor 的 Association 属性回溯到 Board dbus 对象，
+// 检查 EntityId 和 EntityInstance 属性。
 void updateIpmiFromAssociation(
     const std::string& path,
     const std::unordered_set<std::string>& ipmiDecoratorPaths,
@@ -551,14 +595,17 @@ void updateIpmiFromAssociation(
         std::get<std::vector<Association>>(associationObject->second);
 
     // loop through the Associations looking for the right one:
+    // 遍历 Associations 寻找正确的那一个：
     for (const auto& entry : associationValues)
     {
         // forward, reverse, endpoint
+        // forward、reverse、endpoint
         const std::string& forward = std::get<0>(entry);
         const std::string& reverse = std::get<1>(entry);
         const std::string& endpoint = std::get<2>(entry);
 
         // We only currently concern ourselves with chassis+all_sensors.
+        // 目前我们只关注 chassis+all_sensors。
         if (!(forward == "chassis" && reverse == "all_sensors"))
         {
             continue;
@@ -567,8 +614,12 @@ void updateIpmiFromAssociation(
         // the endpoint is the board entry provided by
         // Entity-Manager. so let's grab its properties if it has
         // the right interface.
+        // endpoint 是 Entity-Manager 提供的板卡条目。
+        // 因此，如果它具有正确的接口，就获取
+        // 它的属性。
 
         // just try grabbing the properties first.
+        // 先尝试直接获取属性。
         ipmi::PropertyMap::iterator entityIdProp;
         ipmi::PropertyMap::iterator entityInstanceProp;
         if (ipmiDecoratorPaths.contains(endpoint))
@@ -598,6 +649,11 @@ void updateIpmiFromAssociation(
         // In theory, checking this first saves us from checking
         // both, except in most use-cases identified, there won't be
         // a per sensor override, so we need to always check both.
+        // 现在检查该传感器在 entity-manager 中的条目，看看
+        // 它是否有自己的值，若有则改用它。
+        // 理论上，先检查这里可以免去同时检查两者，
+        // 但在已识别的大多数使用场景中并不会有针对
+        // 单个传感器的覆盖，因此仍需始终检查两者。
         std::string sensorNameFromPath = fs::path(path).filename();
 
         std::string sensorConfigPath = endpoint + "/" + sensorNameFromPath;
@@ -605,6 +661,9 @@ void updateIpmiFromAssociation(
         // Download the interfaces for the sensor from
         // Entity-Manager to find the name of the configuration
         // interface.
+        // 从 Entity-Manager 下载传感器的接口，
+        // 以找到配置
+        // 接口的名称。
         std::optional<std::map<std::string, std::vector<std::string>>>
             sensorInterfacesResponseOpt =
                 getObjectInterfaces(sensorConfigPath.c_str());
@@ -623,12 +682,16 @@ void updateIpmiFromAssociation(
         // If there are multi association path settings and only one path exist,
         // we need to continue if cannot find configuration interface for this
         // sensor.
+        // 如果存在多个关联路径设置而实际只有一个路径，
+        // 当找不到该传感器的配置接口时，
+        // 我们需要继续处理。
         if (!configurationInterface)
         {
             continue;
         }
 
         // We found a configuration interface.
+        // 我们找到了一个配置接口。
         std::map<std::string, Value> configurationProperties =
             getEntityManagerProperties(sensorConfigPath.c_str(),
                                        configurationInterface->c_str());
@@ -647,6 +710,7 @@ void updateIpmiFromAssociation(
         }
 
         // stop searching Association records.
+        // 停止搜索 Association 记录。
         break;
     } // end for Association vectors.
 

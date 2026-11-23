@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# @brief 从 YAML 生成传感器配置/代码的脚本。
+
 import argparse
 import os
 import sys

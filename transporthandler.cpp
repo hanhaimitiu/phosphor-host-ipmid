@@ -1,3 +1,10 @@
+
+/**
+ * @file transporthandler.cpp
+ * @brief Transport/LAN IPMI 命令：网络参数（IP/网关/MAC/VLAN）配置。
+ */
+/*  @file transporthandler.cpp
+ *  @brief Transport/LAN IPMI 命令：网络参数（IP/网关/MAC/VLAN）配置。 */
 #include "transporthandler.hpp"
 
 #include <ipmid/utils.hpp>
@@ -40,6 +47,7 @@ std::vector<uint8_t> getCipherList()
     }
 
     // Byte 1 is reserved
+    // 字节 1 为保留位
     cipherList.push_back(0x00);
 
     for (const auto& record : data)
@@ -57,6 +65,7 @@ namespace transport
 {
 
 // LAN Handler specific response codes
+// LAN Handler 专用的响应码
 constexpr Cc ccParamNotSupported = 0x80;
 constexpr Cc ccParamSetLocked = 0x81;
 constexpr Cc ccParamReadOnly = 0x82;
@@ -83,6 +92,7 @@ static inline auto responseWriteReadParameter()
 }
 
 /** @brief Valid address origins for IPv4 */
+/* @brief IPv4 的有效地址来源 */
 const std::unordered_set<IP::AddressOrigin> originsV4 = {
     IP::AddressOrigin::Static,
     IP::AddressOrigin::DHCP,
@@ -92,6 +102,8 @@ static constexpr uint8_t oemCmdStart = 192;
 
 // Checks if the ifname is part of the networkd path
 // This assumes the path came from the network subtree PATH_ROOT
+// 检查 ifname 是否属于 networkd 路径的一部分。
+// 这里假设该路径来自 network 子树 PATH_ROOT。
 bool ifnameInPath(std::string_view ifname, std::string_view path)
 {
     constexpr auto rs = PATH_ROOT.size() + 1; // ROOT + separator
@@ -100,6 +112,7 @@ bool ifnameInPath(std::string_view ifname, std::string_view path)
            (path.size() == is || path[is] == '/' ||
             path[is] == '_'); // handle VLAN IF uses '_' e.g.
                               // /xyz/openbmc_project/network/eth0_2
+                              // 路径示例：/xyz/openbmc_project/network/eth0_2
 }
 
 std::optional<ChannelParams> maybeGetChannelParams(sdbusplus::bus_t& bus,
@@ -112,6 +125,7 @@ std::optional<ChannelParams> maybeGetChannelParams(sdbusplus::bus_t& bus,
     }
 
     // Enumerate all VLAN + ETHERNET interfaces
+    // 枚举所有 VLAN 和 ETHERNET 接口
     std::vector<std::string> interfaces = {INTF_VLAN, INTF_ETHERNET};
     ipmi::ObjectTree objs =
         ipmi::getSubTree(bus, interfaces, std::string{PATH_ROOT});
@@ -154,11 +168,13 @@ std::optional<ChannelParams> maybeGetChannelParams(sdbusplus::bus_t& bus,
     }
 
     // We must have a path for the underlying interface
+    // 底层接口必须有一个路径
     if (params.ifPath.empty())
     {
         return std::nullopt;
     }
     // We don't have a VLAN so the logical path is the same
+    // 没有 VLAN，因此逻辑路径（logical path）相同
     if (params.logicalPath.empty())
     {
         params.logicalPath = params.ifPath;
@@ -183,6 +199,7 @@ ChannelParams getChannelParams(sdbusplus::bus_t& bus, uint8_t channel)
 
 /** @brief Get / Set the Property value from phosphor-networkd EthernetInterface
  */
+/* @brief 从 phosphor-networkd 的 EthernetInterface 获取 / 设置属性值。 */
 template <typename T>
 static T getEthProp(sdbusplus::bus_t& bus, const ChannelParams& params,
                     const std::string& prop)
@@ -204,6 +221,10 @@ static void setEthProp(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] params - The parameters for the channel
  *  @return The configured mac address
  */
+/* @brief 确定以太网接口的 MAC 地址。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @return 配置的 MAC 地址 */
 stdplus::EtherAddr getMACProperty(sdbusplus::bus_t& bus,
                                   const ChannelParams& params)
 {
@@ -218,6 +239,10 @@ stdplus::EtherAddr getMACProperty(sdbusplus::bus_t& bus,
  *  @param[in] params - The parameters for the channel
  *  @param[in] mac    - MAC address to apply
  */
+/* @brief 在指定接口上设置系统的 MAC 地址值。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @param[in] mac - 要应用的 MAC 地址 */
 void setMACProperty(sdbusplus::bus_t& bus, const ChannelParams& params,
                     stdplus::EtherAddr mac)
 {
@@ -242,15 +267,19 @@ void deleteObjectIfExists(sdbusplus::bus_t& bus, const std::string& service,
     catch (const UnknownObject&)
     {
         // Object already gone; nothing to do.
+        // 对象已不存在，无需处理。
     }
     catch (const sdbusplus::exception_t& e)
     {
         // InternalFailure and NotAllowed are legacy errors, so match them
         // by name.
+        // InternalFailure 和 NotAllowed 是遗留错误类型，因此通过
+        // 名称来匹配它们。
         if (std::string_view{InternalFailure::errName} != e.name() &&
             std::string_view{NotAllowed::errName} != e.name())
         {
             // We want to rethrow real errors
+            // 我们希望将真正的错误重新抛出
             throw;
         }
     }
@@ -265,6 +294,13 @@ void deleteObjectIfExists(sdbusplus::bus_t& bus, const std::string& service,
  *  @param[in] address - The address of the new IP
  *  @param[in] prefix  - The prefix of the new IP
  */
+/* @brief 设置接口上配置的地址信息；
+ *         如果之前存在某个地址路径，会在添加新地址之前
+ *         将其删除。
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] address - 新 IP 的地址
+ *   @param[in] prefix - 新 IP 的前缀 */
 template <int family>
 void createIfAddr(sdbusplus::bus_t& bus, const ChannelParams& params,
                   typename AddrFamily<family>::addr address, uint8_t prefix)
@@ -286,6 +322,10 @@ void createIfAddr(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] params - The parameters for the channel
  *  @return The address and prefix if found
  */
+/* @brief 从 getIfAddrs() 获取 IPv4 地址的简易辅助函数。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @return 找到的地址和前缀 */
 auto getIfAddr4(sdbusplus::bus_t& bus, const ChannelParams& params)
 {
     std::optional<IfAddr<AF_INET>> ifaddr4 = std::nullopt;
@@ -327,6 +367,11 @@ auto getIfAddr4(sdbusplus::bus_t& bus, const ChannelParams& params)
  *  @param[in] address - The new address if specified
  *  @param[in] prefix  - The new address prefix if specified
  */
+/* @brief 重新配置接口上配置的 IPv4 地址信息
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] address - 新地址（如果指定）
+ *   @param[in] prefix - 新地址前缀（如果指定） */
 void reconfigureIfAddr4(sdbusplus::bus_t& bus, const ChannelParams& params,
                         std::optional<stdplus::In4Addr> address,
                         std::optional<uint8_t> prefix)
@@ -403,6 +448,10 @@ void reconfigureGatewayMAC(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] params  - The parameters for the channel
  *  @param[in] idx     - The address index to operate on
  */
+/* @brief 取消配置接口上配置的 IPv6 地址信息
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] idx - 要操作的地址索引 */
 void deconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
                         uint8_t idx)
 {
@@ -421,6 +470,12 @@ void deconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] address - The new address
  *  @param[in] prefix  - The new address prefix
  */
+/* @brief 重新配置接口上配置的 IPv6 地址信息
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] idx - 要操作的地址索引
+ *   @param[in] address - 新地址
+ *   @param[in] prefix - 新地址前缀 */
 void reconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
                         uint8_t idx, stdplus::In6Addr address, uint8_t prefix)
 {
@@ -433,6 +488,9 @@ void reconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] origin - The DBus Address Origin to convert
  *  @return The IPv6Source version of the origin
  */
+/* @brief 将 AddressOrigin 转换为 IPv6Source
+ *   @param[in] origin - 要转换的 DBus Address Origin
+ *   @return 转换后的 IPv6Source 版本 origin */
 IPv6Source originToSourceType(IP::AddressOrigin origin)
 {
     switch (origin)
@@ -462,6 +520,11 @@ IPv6Source originToSourceType(IP::AddressOrigin origin)
  *  @param[in]  set     - The set selector for determining address index
  *  @param[in]  origins - Set of valid origins for address filtering
  */
+/* @brief 用 IPv6 地址数据打包 IPMI 消息响应
+ *   @param[out] ret - 要打包的 IPMI 响应负载
+ *   @param[in] channel - 对应以太网接口的通道 id
+ *   @param[in] set - 用于确定地址索引的 set selector
+ *   @param[in] origins - 用于地址过滤的有效 origin 集合 */
 void getLanIPv6Address(message::Payload& ret, uint8_t channel, uint8_t set,
                        const std::unordered_set<IP::AddressOrigin>& origins)
 {
@@ -494,9 +557,14 @@ void getLanIPv6Address(message::Payload& ret, uint8_t channel, uint8_t set,
  *  @param[in] params - The parameters for the channel
  *  @return VLAN id or the standard 0 for no VLAN
  */
+/* @brief 获取接口上配置的 vlan ID
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @return VLAN id；无 VLAN 时为标准的 0 */
 uint16_t getVLANProperty(sdbusplus::bus_t& bus, const ChannelParams& params)
 {
     // VLAN devices will always have a separate logical object
+    // VLAN 设备始终拥有独立的逻辑对象
     if (params.ifPath == params.logicalPath)
     {
         return 0;
@@ -519,9 +587,13 @@ uint16_t getVLANProperty(sdbusplus::bus_t& bus, const ChannelParams& params)
  *  @param[in] bus    - The bus object used for lookups
  *  @param[in] params - The parameters for the channel
  */
+/* @brief 删除某个通道所有可能的配置参数
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数 */
 void deconfigureChannel(sdbusplus::bus_t& bus, ChannelParams& params)
 {
     // Delete all objects associated with the interface
+    // 删除与该接口关联的所有对象
     ObjectTree objs =
         ipmi::getSubTree(bus, std::vector<std::string>{DELETE_INTERFACE},
                          std::string{PATH_ROOT});
@@ -536,6 +608,7 @@ void deconfigureChannel(sdbusplus::bus_t& bus, ChannelParams& params)
             deleteObjectIfExists(bus, service, path);
         }
         // Update params to reflect the deletion of vlan
+        // 更新 params 以反映 VLAN 已被删除
         if (path == params.logicalPath)
         {
             params.logicalPath = params.ifPath;
@@ -543,6 +616,7 @@ void deconfigureChannel(sdbusplus::bus_t& bus, ChannelParams& params)
     }
 
     // Clear out any settings on the lower physical interface
+    // 清除底层物理接口上的所有设置
     setEthProp(bus, params, "DHCP4", false);
     setEthProp(bus, params, "DHCP6", false);
     setEthProp(bus, params, "IPv6AcceptRA", false);
@@ -554,6 +628,10 @@ void deconfigureChannel(sdbusplus::bus_t& bus, ChannelParams& params)
  *  @param[in] bus    - The bus object used for lookups
  *  @param[in] params - The parameters for the vlan interface
  */
+/* @brief 删除 VLAN 接口所有可能的
+ * 配置参数。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - VLAN 接口的参数 */
 void deconfigureVLAN(sdbusplus::bus_t& bus, ChannelParams& params)
 {
     std::vector<std::string> interfaces = {INTF_VLAN};
@@ -582,6 +660,10 @@ void deconfigureVLAN(sdbusplus::bus_t& bus, ChannelParams& params)
  *  @param[in] params - The parameters for the channel
  *  @param[in] vlan   - The id of the new vlan
  */
+/* @brief 在指定接口上创建新的 VLAN
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] vlan - 新 vlan 的 id */
 void createVLAN(sdbusplus::bus_t& bus, ChannelParams& params, uint16_t vlan)
 {
     if (vlan == 0)
@@ -604,10 +686,15 @@ void createVLAN(sdbusplus::bus_t& bus, ChannelParams& params, uint16_t vlan)
  *  @param[in] params - The parameters for the channel
  *  @param[in] vlan   - The new vlan id to use
  */
+/* @brief 执行更改 VLAN 所需的重新配置
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] vlan - 要使用的新 vlan id */
 void reconfigureVLAN(sdbusplus::bus_t& bus, ChannelParams& params,
                      uint16_t vlan)
 {
     // If the VLAN id is unchanged, no reconfiguration is needed
+    // 如果 VLAN id 未变化，则无需重新配置
     uint16_t currentVlan = getVLANProperty(bus, params);
     if (currentVlan == vlan)
     {
@@ -621,8 +708,13 @@ void reconfigureVLAN(sdbusplus::bus_t& bus, ChannelParams& params,
     // customizations to new VLAN interfaces, or have some kind of decoupling.
     // We therefore must retain all of our old information, setup the new VLAN
     // configuration, then restore the old info.
+    // 遗憾的是，我们没有内置函数可以把接口的自定义设置
+    // 迁移到新的 VLAN 接口上，也没有某种解耦机制。
+    // 因此我们只能保留所有旧信息，建立新的 VLAN 配置，
+    // 然后再恢复旧信息。
 
     // Save info from the old logical interface
+    // 保存旧逻辑接口上的信息
     bool dhcp4 = getEthProp<bool>(bus, params, "DHCP4");
     bool dhcp6 = getEthProp<bool>(bus, params, "DHCP6");
     bool ra = getEthProp<bool>(bus, params, "IPv6AcceptRA");
@@ -672,12 +764,18 @@ void reconfigureVLAN(sdbusplus::bus_t& bus, ChannelParams& params,
 
 // We need to store this value so it can be returned to the client
 // It is volatile so safe to store in daemon memory.
+// 我们需要存储这个值，以便返回给客户端。
+// 它是易失的，因此存放在守护进程内存中是安全的。
 static std::unordered_map<uint8_t, SetStatus> setStatus;
 
 // Until we have good support for fixed versions of IPMI tool
 // we need to return the VLAN id for disabled VLANs. The value is only
 // used for verification that a disable operation succeeded and will only
 // be sent if our system indicates that vlans are disabled.
+// 在获得对固定版本 IPMI 工具的良好支持之前，
+// 我们需要为禁用 VLAN 的情况返回 VLAN id。
+// 该值仅用于验证禁用操作是否成功，且只有在系统
+// 指示 VLAN 已禁用时才会发送。
 static std::unordered_map<uint8_t, uint16_t> lastDisabledVlan;
 
 /** @brief Gets the set status for the channel if it exists
@@ -686,6 +784,10 @@ static std::unordered_map<uint8_t, uint16_t> lastDisabledVlan;
  *  @param[in] channel - The channel id corresponding to an ethernet interface
  *  @return A reference to the SetStatus for the channel
  */
+/* @brief 获取通道的 set 状态（若存在），
+ *         否则填充并返回默认值。
+ *   @param[in] channel - 对应以太网接口的通道 id
+ *   @return 指向该通道 SetStatus 的引用 */
 SetStatus& getSetStatus(uint8_t channel)
 {
     auto it = setStatus.find(channel);
@@ -697,6 +799,7 @@ SetStatus& getSetStatus(uint8_t channel)
 }
 
 /** @brief Unpacks the trivially copyable type from the message */
+/* @brief 从消息中解包可平凡复制（trivially copyable）的类型 */
 template <typename T>
 static T unpackT(message::Payload& req)
 {
@@ -709,6 +812,7 @@ static T unpackT(message::Payload& req)
 }
 
 /** @brief Ensure the message is fully unpacked */
+/* @brief 确保消息已被完全解包 */
 static void unpackFinal(message::Payload& req)
 {
     if (!req.fullyUnpacked())
@@ -746,6 +850,31 @@ static void unpackFinal(message::Payload& req)
  *   }
  *
  */
+/* 为 Set LAN Configuration Parameters 和 Get LAN Configuration
+ * Parameters 命令的 OEM Extension 字节定义占位命令处理函数。
+ * 使用 "weak"（弱）链接可以让下面的占位函数 setLanOem/getLanOem
+ * 被覆盖。
+ * 若要为你自己的专有命令集创建处理函数：
+ *   在你的 Yocto recipe 中创建/修改一个 phosphor-ipmi-host 的
+ *   Bitbake append 文件（bbappend）
+ *   创建 C++ 文件，定义与下面函数名匹配的 IPMI 处理函数
+ *     （即 setLanOem）。传输层 IPMI 命令的默认文件名为
+ *     transporthandler_oem.cpp。
+ *   添加：
+ *      EXTRA_OEMESON:append = "-Dtransport-oem=enabled"
+ *   在你的 bbappend 文件中创建 do_configure:prepend()/
+ *   do_install:append() 方法，把该文件复制到构建目录。
+ *   添加：
+ *   PROJECT_SRC_DIR := "${THISDIR}/${PN}"
+ *   # 将 "strong"（强）函数复制到工作目录，覆盖
+ *   # 占位函数。
+ *   do_configure:prepend(){
+ *      cp -f ${PROJECT_SRC_DIR}/transporthandler_oem.cpp ${S}
+ *   }
+ *   # 编译完成后清理
+ *   do_install:append(){
+ *      rm -f ${S}/transporthandler_oem.cpp
+ *   } */
 
 /**
  * Define the placeholder OEM commands as having weak linkage. Create
@@ -753,6 +882,10 @@ static void unpackFinal(message::Payload& req)
  * file. The functions defined there must not have the "weak" attribute
  * applied to them.
  */
+/*  将这些占位 OEM 命令定义为弱链接。
+ *  在 transporthandler_oem.cpp 文件中创建 setLanOem
+ *  和 getLanOem 函数。其中定义的函数不能带有
+ *  "weak" 属性。 */
 RspType<> setLanOem(uint8_t channel, uint8_t parameter, message::Payload& req)
     __attribute__((weak));
 RspType<message::Payload> getLanOem(uint8_t channel, uint8_t parameter,
@@ -779,6 +912,11 @@ RspType<message::Payload> getLanOem(uint8_t, uint8_t, uint8_t, uint8_t)
  * @return nullopt if the channel is invalid, false if the channel is not a LAN
  * channel, true if the channel is a LAN channel.
  **/
+/*  @brief 判断是否为有效的 LAN 通道。
+ *  本函数检查输入通道是否为有效的 LAN 通道。
+ *  @param[in] channel: 通道号。
+ *  @return 通道无效时返回 nullopt，不是 LAN 通道时返回 false，
+ *  是 LAN 通道时返回 true。 */
 std::optional<bool> isLanChannel(uint8_t channel)
 {
     ChannelInfo chInfo;
@@ -893,6 +1031,10 @@ RspType<> setLanInt(Context::ptr ctx, uint4_t channelBits, uint4_t reserved1,
                     // management. Modifying IPv6 state is done using
                     // a completely different Set LAN Configuration
                     // subcommand.
+                    // IPSrc IPMI 命令仅用于 IPv4 管理。
+                    // 修改 IPv6 状态需要通过一个完全不同的
+                    // Set LAN Configuration 子命令
+                    // 来完成。
                     channelCall<setEthProp<bool>>(channel, "DHCP4", true);
                     return responseSuccess();
                 case IPSrc::Unspecified:
@@ -1110,6 +1252,7 @@ RspType<> setLanInt(Context::ptr ctx, uint4_t channelBits, uint4_t reserved1,
             unpackT<stdplus::In6Addr>(req);
             unpackFinal(req);
             // Accept any prefix value since our prefix length has to be 0
+            // 接受任意前缀值，因为我们的前缀长度必须为 0
             return responseSuccess();
         }
         case LanParam::cipherSuitePrivilegeLevels:
@@ -1703,6 +1846,7 @@ RspType<message::Payload> getSolConfParams(
         case SolConfParam::Authentication:
         {
             // 4bits, cast when pack
+            // 4 位，打包时进行强制转换
             uint8_t privilege;
             bool forceAuth = false;
             bool forceEncrypt = false;
@@ -1751,6 +1895,7 @@ RspType<message::Payload> getSolConfParams(
         case SolConfParam::Retry:
         {
             // 3bits, cast when pack
+            // 3 位，打包时进行强制转换
             uint8_t count{};
             uint8_t interval{};
 

@@ -1,3 +1,10 @@
+
+/**
+ * @file utils.cpp
+ * @brief libipmid 公共工具的实现（供插件链接）。
+ */
+/*  @file utils.cpp
+ *  @brief libipmid 公共工具的实现（供插件链接）。 */
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
@@ -33,6 +40,8 @@ namespace network
 /** @brief checks if the given ip is Link Local Ip or not.
  *  @param[in] ipaddress - IPAddress.
  */
+/* @brief 检查给定的 ip 是否为链路本地（Link Local）IP。
+ *   @param[in] ipaddress - IP 地址 */
 bool isLinkLocalIP(const std::string& ipaddress);
 
 } // namespace network
@@ -42,6 +51,11 @@ bool isLinkLocalIP(const std::string& ipaddress);
 //  which are on interested busname.
 //  Currently mapper doesn't give the readable busname(gives busid) so we can't
 //  use busname to find the object,will do later once the support is there.
+// TODO 可能存在某个接口由多个对象实现的情况，为处理这种情况，
+// 我们只关心位于目标 busname 上的那个对象。
+// 目前 mapper 不提供可读的 busname（只给出 busid），
+// 因此我们无法用 busname 查找对象，
+// 待支持后再处理。
 
 DbusObjectInfo getDbusObject(
     sdbusplus::bus_t& bus, const std::string& interface,
@@ -61,6 +75,7 @@ DbusObjectInfo getDbusObject(
     DbusObjectInfo objectInfo;
 
     // if match is empty then return the first object
+    // 如果 match 为空则返回第一个对象
     if (match == "")
     {
         objectInfo = std::make_pair(
@@ -70,6 +85,7 @@ DbusObjectInfo getDbusObject(
     }
 
     // else search the match string in the object path
+    // 否则在对象路径中搜索 match 字符串
     auto found = std::find_if(
         objectTree.begin(), objectTree.end(), [&match](const auto& object) {
             return (object.first.find(match) != std::string::npos);
@@ -81,6 +97,7 @@ DbusObjectInfo getDbusObject(
                    match);
         elog<InternalFailure>();
         // elog<> throws an exception.
+        // elog<> 会抛出异常。
     }
 
     return make_pair(found->first, std::move(found->second.begin()->first));
@@ -278,6 +295,7 @@ void callDbusMethod(sdbusplus::bus_t& bus, const std::string& service,
 } // namespace method_no_args
 
 /********* Begin co-routine yielding alternatives ***************/
+/* 开始协程，产出备选结果 */
 
 boost::system::error_code getService(Context::ptr ctx, const std::string& intf,
                                      const std::string& path,
@@ -341,6 +359,7 @@ boost::system::error_code getDbusObject(
     }
 
     // if match is empty then return the first object
+    // 如果 match 为空则返回第一个对象
     if (match == "")
     {
         dbusObject = std::make_pair(
@@ -350,6 +369,7 @@ boost::system::error_code getDbusObject(
     }
 
     // else search the match string in the object path
+    // 否则在对象路径中搜索 match 字符串
     auto found = std::find_if(
         objectTree.begin(), objectTree.end(), [&match](const auto& object) {
             return (object.first.find(match) != std::string::npos);
@@ -362,6 +382,7 @@ boost::system::error_code getDbusObject(
                    "MATCH", match, "NETFN", lg2::hex, ctx->netFn, "CMD",
                    lg2::hex, ctx->cmd);
         // set ec
+        // 设置 ec
         return boost::system::errc::make_error_code(
             boost::system::errc::no_such_file_or_directory);
     }
@@ -447,12 +468,14 @@ boost::system::error_code callDbusMethod(
 }
 
 /********* End co-routine yielding alternatives ***************/
+/* 结束协程，产出备选结果 */
 
 ipmi::Cc i2cWriteRead(std::string i2cBus, const uint8_t targetAddr,
                       std::vector<uint8_t> writeData,
                       std::vector<uint8_t>& readBuf)
 {
     // Open the i2c device, for low-level combined data write/read
+    // 打开 i2c 设备，用于底层组合数据写/读
     int i2cDev = ::open(i2cBus.c_str(), O_RDWR | O_CLOEXEC);
     if (i2cDev < 0)
     {
@@ -467,6 +490,7 @@ ipmi::Cc i2cWriteRead(std::string i2cBus, const uint8_t targetAddr,
     if (writeCount)
     {
         // Data will be writtern to the target address
+        // 数据将被写入目标地址
         i2cmsg[msgCount].addr = targetAddr;
         i2cmsg[msgCount].flags = 0x00;
         i2cmsg[msgCount].len = writeCount;
@@ -476,6 +500,7 @@ ipmi::Cc i2cWriteRead(std::string i2cBus, const uint8_t targetAddr,
     if (readCount)
     {
         // Data will be read into the buffer from the target address
+        // 数据将从目标地址读入缓冲区
         i2cmsg[msgCount].addr = targetAddr;
         i2cmsg[msgCount].flags = I2C_M_RD;
         i2cmsg[msgCount].len = readCount;
@@ -488,6 +513,7 @@ ipmi::Cc i2cWriteRead(std::string i2cBus, const uint8_t targetAddr,
     msgReadWrite.nmsgs = msgCount;
 
     // Perform the combined write/read
+    // 执行组合写/读
     int ret = ::ioctl(i2cDev, I2C_RDWR, &msgReadWrite);
     ::close(i2cDev);
 

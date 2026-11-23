@@ -1,3 +1,10 @@
+
+/**
+ * @file channel_mgmt.cpp
+ * @brief 通道管理核心：通道配置文件读写与校验。
+ */
+/*  @file channel_mgmt.cpp
+ *  @brief 通道管理核心：通道配置文件读写与校验。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 
 #include "channel_mgmt.hpp"
 
@@ -48,6 +68,7 @@ static constexpr const char* channelVolatileDataFilename =
     "/run/ipmi/channel_access_volatile.json";
 
 // TODO: Get the service name dynamically..
+// TODO：动态获取服务名..
 static constexpr const char* networkIntfServiceName =
     "xyz.openbmc_project.Network";
 static constexpr const char* networkIntfObjectBasePath =
@@ -62,6 +83,7 @@ static constexpr const char* interfaceAddedSignal = "InterfacesAdded";
 static constexpr const char* interfaceRemovedSignal = "InterfacesRemoved";
 
 // STRING DEFINES: Should sync with key's in JSON
+// 字符串定义：应与 JSON 中的键保持同步
 static constexpr const char* nameString = "name";
 static constexpr const char* isValidString = "is_valid";
 static constexpr const char* activeSessionsString = "active_sessions";
@@ -79,6 +101,7 @@ static constexpr const char* alertingDisabledString = "alerting_disabled";
 static constexpr const char* privLimitString = "priv_limit";
 
 // Default values
+// 默认值
 static constexpr const char* defaultChannelName = "RESERVED";
 static constexpr const uint8_t defaultMediumType =
     static_cast<uint8_t>(EChannelMediumType::reserved);
@@ -101,6 +124,7 @@ std::unique_ptr<sdbusplus::match> chInterfaceRemovedSignal
     __attribute__((init_priority(101)));
 
 // String mappings use in JSON config file
+// JSON 配置文件中使用的字符串映射
 static std::unordered_map<std::string, EChannelMediumType> mediumTypeMap = {
     {"reserved", EChannelMediumType::reserved},
     {"ipmb", EChannelMediumType::ipmb},
@@ -191,6 +215,7 @@ void ChannelConfig::processChAccessPropChange(
     const std::string& path, const DbusChObjProperties& chProperties)
 {
     // Get interface name from path. ex: '/xyz/openbmc_project/network/eth0'
+    // 从路径获取接口名。例如：'/xyz/openbmc_project/network/eth0'
     std::string chName;
     try
     {
@@ -203,6 +228,7 @@ void ChannelConfig::processChAccessPropChange(
     }
 
     // Get the MaxPrivilege property value from the signal
+    // 从信号中获取 MaxPrivilege 属性值
     std::string intfPrivStr;
     std::string propName;
     for (const auto& prop : chProperties)
@@ -243,6 +269,7 @@ void ChannelConfig::processChAccessPropChange(
     boost::interprocess::scoped_lock<boost::interprocess::named_recursive_mutex>
         channelLock{*channelMutex};
     // skip updating the values, if this property change originated from IPMI.
+    // 如果此属性变更源自 IPMI，则跳过更新。
     if (signalFlag & (1 << chNum))
     {
         signalFlag &= ~(1 << chNum);
@@ -253,11 +280,15 @@ void ChannelConfig::processChAccessPropChange(
     // Update both volatile & Non-volatile, if there is mismatch.
     // as property change other than IPMI, has to update both volatile &
     // non-volatile data.
+    // 若存在不一致，则同时更新易失性与非易失性数据。
+    // 因为非 IPMI 引起的属性变更，必须同时更新易失性
+    // 和非易失性数据。
     checkAndReloadVolatileData();
     checkAndReloadNVData();
     if (channelData[chNum].chAccess.chNonVolatileData.privLimit != intfPriv)
     {
         // Update NV data
+        // 更新 NV 数据
         channelData[chNum].chAccess.chNonVolatileData.privLimit = intfPriv;
         if (writeChannelPersistData() != 0)
         {
@@ -266,6 +297,7 @@ void ChannelConfig::processChAccessPropChange(
         }
 
         // Update Volatile data
+        // 更新易失性（Volatile）数据
         if (channelData[chNum].chAccess.chVolatileData.privLimit != intfPriv)
         {
             channelData[chNum].chAccess.chVolatileData.privLimit = intfPriv;
@@ -331,6 +363,8 @@ ChannelConfig::ChannelConfig() : bus(ipmid_get_sd_bus_connection())
     sigHndlrLock = boost::interprocess::file_lock(channelNvDataFilename);
     // Register it for single object and single process either netipmid /
     // host-ipmid
+    // 为单个对象和单个进程（netipmid /
+    // host-ipmid）注册它
     if (chPropertiesSignal == nullptr && sigHndlrLock.try_lock())
     {
         lg2::debug("Registering channel signal handler.");
@@ -413,6 +447,10 @@ int ChannelConfig::getChannelActiveSessions(const uint8_t chNum)
     // by monitoring channel session which includes LAN and
     // RAKP layer changes. This will be updated, once the
     // authentication part is implemented.
+    // TODO：临时方案
+    // 通道的活动会话数通过监控通道会话单独管理，
+    // 其中包括 LAN 和 RAKP 层的变化。
+    // 待认证部分实现后，这里会相应更新。
     return channelData[chNum].activeSessCount;
 }
 
@@ -529,6 +567,7 @@ Cc ChannelConfig::setChannelAccessData(const uint8_t chNum,
     }
 
     // Write Volatile data to file
+    // 将易失性数据写入文件
     if (writeChannelVolatileData() != 0)
     {
         lg2::debug("Failed to update the channel volatile data");
@@ -628,6 +667,7 @@ Cc ChannelConfig::setChannelAccessPersistData(const uint8_t chNum,
     if (setFlag & setPrivLimit)
     {
         // Best-effort mirror; the persist data written below is authoritative.
+        // 尽力而为的镜像；下面写入的持久数据才是权威数据。
         std::string privStr = convertToPrivLimitString(chAccessData.privLimit);
         std::string networkIntfObj = std::string(networkIntfObjectBasePath) +
                                      "/" + channelData[chNum].chName;
@@ -653,6 +693,7 @@ Cc ChannelConfig::setChannelAccessPersistData(const uint8_t chNum,
     }
 
     // Write persistent data to file
+    // 将持久数据写入文件
     if (writeChannelPersistData() != 0)
     {
         lg2::debug("Failed to update the persist data file");
@@ -699,6 +740,7 @@ Cc ChannelConfig::getChannelEnabledAuthType(
     }
 
     // TODO: Hardcoded for now. Need to implement.
+    // TODO：目前是硬编码。需要实现。
     authType = EAuthType::none;
 
     return ccSuccess;
@@ -923,6 +965,8 @@ int ChannelConfig::loadChannelConfig()
 
     // Collect the list of NIC interfaces connected to the BMC. Use this
     // information to only add IPMI channels that have active NIC interfaces.
+    // 收集连接到 BMC 的 NIC 接口列表。
+    // 仅用该信息添加具有活动 NIC 接口的 IPMI 通道。
     struct ifaddrs *ifaddr = nullptr, *ifa = nullptr;
     if (int err = getifaddrs(&ifaddr); err < 0)
     {
@@ -940,6 +984,8 @@ int ChannelConfig::loadChannelConfig()
             {
                 // If user didn't want to configure specific channel (say
                 // reserved channel), then load that index with default values.
+                // 如果用户不想配置某个特定通道（例如
+                // 保留通道），则用默认值加载该索引。
                 setDefaultChannelConfig(chNum, defaultChannelName);
                 continue;
             }
@@ -953,6 +999,7 @@ int ChannelConfig::loadChannelConfig()
 
             bool channelFound = true;
             // Confirm the LAN channel is present
+            // 确认 LAN 通道存在
             if (jsonChInfo[mediumTypeString].get<std::string>() == "lan-802.3")
             {
                 channelFound = false;
@@ -1028,6 +1075,7 @@ int ChannelConfig::readChannelVolatileData()
     try
     {
         // Fill in global structure
+        // 填充全局结构体
         for (auto it = data.begin(); it != data.end(); ++it)
         {
             uint8_t chNum;
@@ -1077,6 +1125,7 @@ int ChannelConfig::readChannelVolatileData()
     }
 
     // Update the timestamp
+    // 更新时间戳
     voltFileLastUpdatedTime = getUpdatedFileTime(channelVolatileDataFilename);
     return 0;
 }
@@ -1095,6 +1144,7 @@ int ChannelConfig::readChannelPersistData()
     try
     {
         // Fill in global structure
+        // 填充全局结构体
         for (auto it = data.begin(); it != data.end(); ++it)
         {
             uint8_t chNum;
@@ -1143,6 +1193,7 @@ int ChannelConfig::readChannelPersistData()
     }
 
     // Update the timestamp
+    // 更新时间戳
     nvFileLastUpdatedTime = getUpdatedFileTime(channelNvDataFilename);
     return 0;
 }
@@ -1192,6 +1243,7 @@ int ChannelConfig::writeChannelVolatileData()
     }
 
     // Update the timestamp
+    // 更新时间戳
     voltFileLastUpdatedTime = getUpdatedFileTime(channelVolatileDataFilename);
     return 0;
 }
@@ -1243,6 +1295,7 @@ int ChannelConfig::writeChannelPersistData()
     }
 
     // Update the timestamp
+    // 更新时间戳
     nvFileLastUpdatedTime = getUpdatedFileTime(channelNvDataFilename);
     return 0;
 }
@@ -1370,12 +1423,14 @@ int ChannelConfig::syncNetworkChannelConfig()
     if (isUpdated)
     {
         // Write persistent data to file
+        // 将持久数据写入文件
         if (writeChannelPersistData() != 0)
         {
             lg2::debug("Failed to update the persistent data file");
             return -EIO;
         }
         // Write Volatile data to file
+        // 将易失性数据写入文件
         if (writeChannelVolatileData() != 0)
         {
             lg2::debug("Failed to update the channel volatile data");
@@ -1392,6 +1447,7 @@ void ChannelConfig::initChannelPersistData()
         channelLock{*channelMutex};
 
     /* Always read the channel config */
+    /* 始终读取通道配置 */
     if (loadChannelConfig() != 0)
     {
         lg2::error("Failed to read channel config file");
@@ -1399,13 +1455,16 @@ void ChannelConfig::initChannelPersistData()
     }
 
     /* Populate the channel persist data */
+    /* 填充通道持久数据 */
     if (readChannelPersistData() != 0)
     {
         // Copy default NV data to RW location
+        // 将默认 NV 数据拷贝到可读写位置
         std::filesystem::copy_file(channelAccessDefaultFilename,
                                    channelNvDataFilename);
 
         // Load the channel access NV data
+        // 加载通道访问的 NV 数据
         if (readChannelPersistData() != 0)
         {
             lg2::error("Failed to read channel access NV data");
@@ -1416,14 +1475,19 @@ void ChannelConfig::initChannelPersistData()
 
     // First check the volatile data file
     // If not present, load the default values
+    // 先检查易失性数据文件
+    // 如果不存在，则加载默认值
     if (readChannelVolatileData() != 0)
     {
         // Copy default volatile data to temporary location
         // NV file(channelNvDataFilename) must have created by now.
+        // 将默认易失性数据拷贝到临时位置
+        // NV 文件（channelNvDataFilename）此时应已创建。
         std::filesystem::copy_file(channelNvDataFilename,
                                    channelVolatileDataFilename);
 
         // Load the channel access volatile data
+        // 加载通道访问的易失性数据
         if (readChannelVolatileData() != 0)
         {
             lg2::error("Failed to read channel access volatile data");
@@ -1434,6 +1498,8 @@ void ChannelConfig::initChannelPersistData()
 
     // Synchronize the channel config(priv) with network channel
     // configuration(priv) over dbus
+    // 通过 dbus 将通道配置（权限）与网络通道
+    // 配置（权限）同步
     if (syncNetworkChannelConfig() != 0)
     {
         lg2::error(

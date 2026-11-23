@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file transporthandler.hpp
+ * @brief Transport/LAN 命令的声明。
+ */
+/*  @file transporthandler.hpp
+ *  @brief Transport/LAN 命令的声明。 */
+
 #include "app/channel.hpp"
 #include "transportconstants.hpp"
 #include "user_channel/cipher_mgmt.hpp"
@@ -43,17 +50,25 @@ namespace transport
  *         This helps reduce the number of mapper lookups we need for each
  *         query and simplifies finding the VLAN interface if needed.
  */
+/* @brief 与某个通道对应的接口的 dbus 参数
+ *         这有助于减少每次查询所需的 mapper 查找次数，
+ *         并在需要时简化查找 VLAN 接口。 */
 struct ChannelParams
 {
     /** @brief The channel ID */
+    /* @brief 通道 ID */
     int id;
     /** @brief channel name for the interface */
+    /* @brief 接口的名称（channel name） */
     std::string ifname;
     /** @brief Name of the service on the bus */
+    /* @brief 总线上服务的名称 */
     std::string service;
     /** @brief Lower level adapter path that is guaranteed to not be a VLAN */
+    /* @brief 保证不是 VLAN 的底层适配器路径 */
     std::string ifPath;
     /** @brief Logical adapter path used for address assignment */
+    /* @brief 用于地址分配的逻辑适配器路径 */
     std::string logicalPath;
 };
 
@@ -65,6 +80,12 @@ struct ChannelParams
  *  @param[in] channel - The channel id corresponding to an ethernet interface
  *  @return Ethernet interface service and object path if it exists
  */
+/* @brief 确定与某个通道对应的以太网接口名称
+ *         先尝试映射 VLAN 对象，以便地址信息准确。
+ *         否则使用标准的以太网接口。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] channel - 对应以太网接口的通道 id
+ *  @return 以太网接口的服务和对象路径（如果存在） */
 std::optional<ChannelParams> maybeGetChannelParams(sdbusplus::bus_t& bus,
                                                    uint8_t channel);
 
@@ -75,6 +96,11 @@ std::optional<ChannelParams> maybeGetChannelParams(sdbusplus::bus_t& bus,
  *  @param[in] channel - The channel id corresponding to an ethernet interface
  *  @return Ethernet interface service and object path
  */
+/* @brief maybeGetChannelParams() 的简易封装，当无法获取
+ *         通道参数时会抛出异常。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] channel - 对应以太网接口的通道 id
+ *  @return 以太网接口的服务和对象路径 */
 ChannelParams getChannelParams(sdbusplus::bus_t& bus, uint8_t channel);
 
 /** @brief Trivializes using parameter getter functions by providing a bus
@@ -83,6 +109,10 @@ ChannelParams getChannelParams(sdbusplus::bus_t& bus, uint8_t channel);
  *  @param[in] channel - The channel id corresponding to an ethernet interface
  *  ...
  */
+/* @brief 通过自动提供总线和通道参数，简化参数获取函数
+ *         的使用。
+ *  @param[in] channel - 对应以太网接口的通道 id
+ *  ... */
 template <auto func, typename... Args>
 auto channelCall(uint8_t channel, Args&&... args)
 {
@@ -92,11 +122,13 @@ auto channelCall(uint8_t channel, Args&&... args)
 }
 
 /** @brief Generic parameters for different address families */
+/* @brief 不同地址族的通用参数 */
 template <int family>
 struct AddrFamily
 {};
 
 /** @brief Parameter specialization for IPv4 */
+/* @brief IPv4 的参数特化 */
 template <>
 struct AddrFamily<AF_INET>
 {
@@ -109,6 +141,7 @@ struct AddrFamily<AF_INET>
 };
 
 /** @brief Parameter specialization for IPv6 */
+/* @brief IPv6 的参数特化 */
 template <>
 struct AddrFamily<AF_INET6>
 {
@@ -121,6 +154,7 @@ struct AddrFamily<AF_INET6>
 };
 
 /** @brief Interface Neighbor configuration parameters */
+/* @brief 接口邻居（Neighbor）配置参数 */
 template <int family>
 struct IfNeigh
 {
@@ -130,6 +164,7 @@ struct IfNeigh
 };
 
 /** @brief Interface IP Address configuration parameters */
+/* @brief 接口 IP 地址配置参数 */
 template <int family>
 struct IfAddr
 {
@@ -140,6 +175,7 @@ struct IfAddr
 };
 
 /** @brief Valid address origins for IPv6 */
+/* @brief IPv6 的有效地址来源 */
 static inline const std::unordered_set<
     sdbusplus::server::xyz::openbmc_project::network::IP::AddressOrigin>
     originsV6Static = {sdbusplus::server::xyz::openbmc_project::network::IP::
@@ -157,6 +193,9 @@ static inline const std::unordered_set<
  *         in DBus. This will only perform the object lookup when needed, and
  *         retains a cache of previous lookups to speed up future iterations.
  */
+/* @brief 一种惰性查找机制，用于遍历存储在 DBus 中的对象属性。
+ *         它只在需要时才执行对象查找，并保留之前查找的缓存
+ *         以加快后续迭代。 */
 class ObjectLookupCache
 {
   public:
@@ -170,6 +209,12 @@ class ObjectLookupCache
      *  @param[in] params - The parameters for the channel
      *  @param[in] intf   - The interface we are looking up
      */
+    /* @brief 为总线上该接口创建一个新的 ObjectLookupCache
+     *         注意：传入本对象的参数必须比本对象存活更久，
+     *         因为本对象只是引用它们。
+     *  @param[in] bus - 用于查找的总线对象
+     *  @param[in] params - 通道的参数
+     *  @param[in] intf - 要查找的接口 */
     ObjectLookupCache(sdbusplus::bus_t& bus, const ChannelParams& params,
                       const char* intf) :
         bus(bus), params(params), intf(intf),
@@ -223,6 +268,10 @@ class ObjectLookupCache
      *  @param[in] path - The object path to lookup
      *  @return An iterator for the specified object path + properties
      */
+    /* @brief 尽可能获取对象属性的缓存副本，
+     *         否则在 DBus 上执行查询来查找它们
+     *  @param[in] path - 要查找的对象路径
+     *  @return 指定对象路径 + 属性的迭代器 */
     PropertiesCache::iterator get(const std::string& path)
     {
         auto it = cache.find(path);
@@ -246,6 +295,15 @@ class ObjectLookupCache
  *  @param[in] ips     - The object lookup cache holding all of the address info
  *  @return The address and prefix if it was found
  */
+/* @brief 在 ip 对象查找缓存中搜索与输入参数匹配的地址。
+ *         注意：索引在地址变化时不保持稳定，因为网络守护进程
+ *         没有稳定索引的概念。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @param[in] idx - 接口上所需地址的索引
+ *  @param[in] origins - 地址对象允许的来源
+ *  @param[in] ips - 保存所有地址信息的对象查找缓存
+ *  @return 找到的地址和前缀 */
 template <int family>
 std::optional<IfAddr<family>> findIfAddr(
     [[maybe_unused]] sdbusplus::bus_t& bus,
@@ -304,6 +362,14 @@ std::optional<IfAddr<family>> findIfAddr(
  *  @param[in] origins - The allowed origins for the address objects
  *  @return The address and prefix if it was found
  */
+/* @brief findIfAddr 的简易辅助函数，简化一次性查找的调用。
+ *         如果你打算一次执行多次查找，
+ *         请勿使用本函数。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @param[in] idx - 接口上所需地址的索引
+ *  @param[in] origins - 地址对象允许的来源
+ *  @return 找到的地址和前缀 */
 template <int family>
 auto getIfAddr(
     sdbusplus::bus_t& bus, const ChannelParams& params, uint8_t idx,
@@ -323,6 +389,12 @@ auto getIfAddr(
  *  @param[in] address - The new address
  *  @param[in] prefix  - The new address prefix
  */
+/* @brief 重新配置接口上配置的 IPv6 地址信息
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] idx - 要操作的地址索引
+ *   @param[in] address - 新地址
+ *   @param[in] prefix - 新地址前缀 */
 void reconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
                         uint8_t idx, stdplus::In6Addr address, uint8_t prefix);
 
@@ -333,6 +405,11 @@ void reconfigureIfAddr6(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] params - The parameters for the channel
  *  @return An address representing the gateway address if it exists
  */
+/* @brief 获取系统上该地址族当前的网关。
+ *         注意：网关是按通道区分的，而不是系统全局的。
+ *  @param[in] bus - 用于查找的总线对象
+ *  @param[in] params - 通道的参数
+ *  @return 表示网关地址的地址对象（如果存在） */
 template <int family>
 std::optional<typename AddrFamily<family>::addr> getGatewayProperty(
     sdbusplus::bus_t& bus, const ChannelParams& params)
@@ -412,6 +489,11 @@ void createNeighbor(sdbusplus::bus_t& bus, const ChannelParams& params,
  *  @param[in] service - The name of the service
  *  @param[in] path    - The path of the object to delete
  */
+/* @brief 删除 dbus 对象。忽略空对象或总线上
+ *         不存在的对象。
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] service - 服务名称
+ *   @param[in] path - 要删除的对象路径 */
 void deleteObjectIfExists(sdbusplus::bus_t& bus, const std::string& service,
                           const std::string& path);
 
@@ -421,11 +503,16 @@ void deleteObjectIfExists(sdbusplus::bus_t& bus, const std::string& service,
  *  @param[in] params  - The parameters for the channel
  *  @param[in] gateway - Gateway address to apply
  */
+/* @brief 设置通道默认网关的值
+ *   @param[in] bus - 用于查找的总线对象
+ *   @param[in] params - 通道的参数
+ *   @param[in] gateway - 要应用的网关地址 */
 template <int family>
 void setGatewayProperty(sdbusplus::bus_t& bus, const ChannelParams& params,
                         typename AddrFamily<family>::addr address)
 {
     // Save the old gateway MAC address if it exists so we can recreate it
+    // 保存旧网关的 MAC 地址（如果存在），以便后续重建
     auto gateway = getGatewayProperty<family>(bus, params);
     std::optional<IfNeigh<family>> neighbor;
     if (gateway)
@@ -439,6 +526,7 @@ void setGatewayProperty(sdbusplus::bus_t& bus, const ChannelParams& params,
                     stdplus::toStr(address));
 
     // Restore the gateway MAC if we had one
+    // 如果之前有网关 MAC，则恢复它
     if (neighbor)
     {
         deleteObjectIfExists(bus, params.service, neighbor->path);

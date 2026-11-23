@@ -1,3 +1,10 @@
+
+/**
+ * @file storageaddsel.cpp
+ * @brief 存储类命令：向 SEL 添加事件（如 watchdog 超时）。
+ */
+/* @file storageaddsel.cpp
+ * @brief 存储类命令：向 SEL 添加事件（如 watchdog 超时）。 */
 #include "error-HostEvent.hpp"
 #include "sensorhandler.hpp"
 
@@ -46,11 +53,14 @@ std::string readESEL(const char* fileName)
 void createProcedureLogEntry(uint8_t procedureNum)
 {
     // Read the eSEL data from the file.
+    // 从文件中读取 eSEL 数据。
     static constexpr auto eSELFile = "/tmp/esel";
     auto eSELData = readESEL(eSELFile);
 
     // Each byte in eSEL is formatted as %02x with a space between bytes and
     // insert '/0' at the end of the character array.
+    // eSEL 中的每个字节按 %02x 格式化，字节之间用空格分隔，
+    // 并在字符数组末尾插入 '/0'。
     static constexpr auto byteSeparator = 3;
     std::unique_ptr<char[]> data(
         new char[(eSELData.size() * byteSeparator) + 1]());

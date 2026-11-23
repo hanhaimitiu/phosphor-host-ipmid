@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file apphandler.hpp
+ * @brief APP/IPMI 通用命令的声明。
+ */
+/* @file apphandler.hpp
+ * @brief APP/IPMI 通用命令的声明。 */
+
 #include <stdint.h>
 
 enum ipmi_app_sysinfo_params

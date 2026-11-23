@@ -24,6 +24,11 @@ TEST(parseSessionInputPayloadTest, InvalidObjectPath)
     // Ex: "/xyz/openbmc_project/ipmi/session/eth0/12a4567d_8a"
     // SessionId    : 0X12a4567d
     // SessionHandle: 0X8a
+    // 合法的对象路径形如：
+    //  "/xyz/openbmc_project/ipmi/session/channel/sessionId_sessionHandle"
+    //  示例："/xyz/openbmc_project/ipmi/session/eth0/12a4567d_8a"
+    //  SessionId    : 0X12a4567d
+    //  SessionHandle: 0X8a
     std::string objectPath = "/xyz/openbmc_project/ipmi/session/eth0/12a4567d";
 
     EXPECT_FALSE(
@@ -97,6 +102,11 @@ TEST(isSessionObjectMatchedTest, InvalidObjectPath)
     // Ex: "/xyz/openbmc_project/ipmi/session/eth0/12a4567d_8a"
     // SessionId    : 0X12a4567d
     // SessionHandle: 0X8a
+    // 合法的对象路径形如：
+    //  "/xyz/openbmc_project/ipmi/session/channel/sessionId_sessionHandle"
+    //  示例："/xyz/openbmc_project/ipmi/session/eth0/12a4567d_8a"
+    //  SessionId    : 0X12a4567d
+    //  SessionHandle: 0X8a
     std::string objectPath = "/xyz/openbmc_project/ipmi/session/eth0/12a4567d";
     uint32_t sessionId = 0x12a4567d;
     uint8_t sessionHandle = 0;

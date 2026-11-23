@@ -1,3 +1,10 @@
+
+/**
+ * @file channel.hpp
+ * @brief APP/IPMI Channel 命令的声明。
+ */
+/*  @file channel.hpp
+ *  @brief APP/IPMI Channel 命令的声明。 */
 #include "nlohmann/json.hpp"
 
 #include <ipmid/api.hpp>
@@ -15,6 +22,16 @@
  *  - rspChannel - channel number for authentication algorithm.
  *  - rspRecords - cipher suite records.
  **/
+/* @brief 本命令用于查询支持哪些认证、完整性、
+ *  机密性算法。
+ *  @ param ctx - 上下文指针
+ *  @ param channelNumber - 通道号
+ *  @ param payloadType - 负载类型
+ *  @ param listIndex - 列表索引
+ *  @ param algoSelectBit - 列出算法
+ *  @returns ipmi 完成码加上响应数据
+ *  - rspChannel - 认证算法对应的通道号。
+ *  - rspRecords - cipher suite 记录。 */
 ipmi::RspType<uint8_t,             // Channel Number
               std::vector<uint8_t> // Cipher Records
               >

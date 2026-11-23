@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file shadowlock.hpp
+ * @brief /etc/shadow 文件锁的 RAII 封装。
+ */
+/*  @file shadowlock.hpp
+ *  @brief /etc/shadow 文件锁的 RAII 封装。 */
+
 #include <shadow.h>
 
 #include <phosphor-logging/elog-errors.hpp>
@@ -19,6 +26,8 @@ using namespace phosphor::logging;
 /** @class Lock
  *  @brief Responsible for locking and unlocking /etc/shadow
  */
+/* @class Lock
+ *   @brief 负责锁定和解锁 /etc/shadow */
 class Lock
 {
   public:
@@ -28,6 +37,7 @@ class Lock
     Lock& operator=(Lock&&) = delete;
 
     /** @brief Default constructor that just locks the shadow file */
+    /* @brief 默认构造函数，仅锁定 shadow 文件 */
     Lock()
     {
         if (!lckpwdf())

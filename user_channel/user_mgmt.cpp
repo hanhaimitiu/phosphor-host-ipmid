@@ -1,3 +1,10 @@
+
+/**
+ * @file user_mgmt.cpp
+ * @brief 用户管理核心：用户配置文件读写与校验。
+ */
+/*  @file user_mgmt.cpp
+ *  @brief 用户管理核心：用户配置文件读写与校验。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 #include "user_mgmt.hpp"
 
 #include "channel_layer.hpp"
@@ -112,6 +132,7 @@ void userUpdateHelper(UserAccess& usrAccess, const UserUpdateEvent& userEvent,
     else
     {
         // user index 0 is reserved, starts with 1
+        // 用户索引 0 保留，从 1 开始
         size_t usrIndex = 1;
         for (; usrIndex <= ipmiMaxUsers; ++usrIndex)
         {
@@ -144,6 +165,7 @@ void userUpdateHelper(UserAccess& usrAccess, const UserUpdateEvent& userEvent,
                     privMask;
                 // Update all channels privileges, only if it is not equivalent
                 // to getUsrMgmtSyncIndex()
+                // 仅当与 getUsrMgmtSyncIndex() 不同时，才更新所有通道的权限
                 if (userData->user[usrIndex]
                         .userPrivAccess[UserAccess::getUsrMgmtSyncIndex()]
                         .privilege != userPriv)
@@ -272,12 +294,14 @@ void userUpdatedSignalHandler(UserAccess& usrAccess, sdbusplus::message_t& msg)
                 userEvent = UserUpdateEvent::userStateUpdated;
             }
             // Process based on event type.
+            // 根据事件类型处理。
             if (userEvent == UserUpdateEvent::userGrpUpdated)
             {
                 if (std::find(groups.begin(), groups.end(), ipmiGrpName) ==
                     groups.end())
                 {
                     // remove user from ipmi user list.
+                    // 从 ipmi 用户列表中删除用户。
                     userUpdateHelper(usrAccess, UserUpdateEvent::userDeleted,
                                      userName, priv, enabled, newUserName);
                 }
@@ -303,6 +327,7 @@ void userUpdatedSignalHandler(UserAccess& usrAccess, sdbusplus::message_t& msg)
                     usrAccess.getUserProperties(properties, groups, priv,
                                                 enabled);
                     // add user to ipmi user list.
+                    // 向 ipmi 用户列表添加用户。
                     userUpdateHelper(usrAccess, UserUpdateEvent::userCreated,
                                      userName, priv, enabled, newUserName);
                 }
@@ -385,6 +410,7 @@ bool UserAccess::isValidUserId(const uint8_t userId)
 bool UserAccess::isValidPrivilege(const uint8_t priv)
 {
     // Callback privilege is deprecated in OpenBMC
+    // OpenBMC 中已废弃 Callback 权限
     return isValidPrivLimit(priv);
 }
 
@@ -398,6 +424,14 @@ uint8_t UserAccess::getUsrMgmtSyncIndex()
     // channels. It is only necessary to add the string above to ONE record in
     // the channel_config.json file. All other records will be automatically
     // assigned a "false" value.
+    // 识别用于在 phosphor-user-manager 中分配系统用户权限级别的
+    // IPMI 通道。默认值为 IPMI Channel 1。要分配
+    // 其他通道，请添加：
+    //      "is_management_nic" : true
+    // 到描述 IPMI 通道分配的 channel_config.json
+    // 文件中。只需在 channel_config.json 文件的
+    // 一条记录中添加上述字符串。所有其他记录将
+    // 自动被赋予 "false" 值。
     return getChannelConfigObject().getManagementNICID();
 }
 
@@ -499,6 +533,12 @@ bool UserAccess::isValidUserName(const std::string& userName)
  *
  *  @return the response in pam response structure.
  */
+/* @brief pam 模块与应用程序之间交换的信息。
+ *   @param[in] numMsg - 指针数组 msg 的长度。
+ *   @param[in] msg - 指向 pam_message 结构体指针数组的指针
+ *   @param[out] resp - pam response 结构体数组
+ *   @param[in] appdataPtr - pam_conv 结构体的成员
+ *   @return pam response 结构体中的响应。 */
 
 static int pamFunctionConversation(int numMsg, const struct pam_message** msg,
                                    struct pam_response** resp, void* appdataPtr)
@@ -516,6 +556,7 @@ static int pamFunctionConversation(int numMsg, const struct pam_message** msg,
     for (int i = 0; i < numMsg; ++i)
     {
         /* Ignore all PAM messages except prompting for hidden input */
+        /* 忽略所有 PAM 消息，除了提示隐藏输入的那条 */
         if (msg[i]->msg_style != PAM_PROMPT_ECHO_OFF)
         {
             continue;
@@ -523,6 +564,7 @@ static int pamFunctionConversation(int numMsg, const struct pam_message** msg,
 
         /* Assume PAM is only prompting for the password as hidden input */
         /* Allocate memory only when PAM_PROMPT_ECHO_OFF is encountered */
+        /* 仅在遇到 PAM_PROMPT_ECHO_OFF 时才分配内存 */
 
         char* appPass = reinterpret_cast<char*>(appdataPtr);
         size_t appPassSize = std::strlen(appPass);
@@ -565,6 +607,10 @@ static int pamFunctionConversation(int numMsg, const struct pam_message** msg,
  *
  *  @return status
  */
+/* @brief 更新 PAM 密码
+ *   @param[in] username - 字符串形式的用户名
+ *   @param[in] password  - 字符串形式的新密码
+ *   @return 状态 */
 
 int pamUpdatePasswd(const char* username, const char* password)
 {
@@ -699,6 +745,7 @@ Cc UserAccess::setUserPayloadAccess(
         return ccInvalidFieldRequest;
     }
     // Check operation & payloadAccess if required.
+    // 必要时检查 operation 和 payloadAccess。
     boost::interprocess::scoped_lock<boost::interprocess::named_recursive_mutex>
         userLock{*userMutex};
     UserInfo* userInfo = getUserInfo(userId);
@@ -797,6 +844,7 @@ uint8_t UserAccess::getUserId(const std::string& userName)
         userLock{*userMutex};
     checkAndReloadUserData();
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     size_t usrIndex = 1;
     for (; usrIndex <= ipmiMaxUsers; ++usrIndex)
     {
@@ -837,6 +885,7 @@ bool UserAccess::isIpmiInAvailableGroupList()
     if (availableGroups.empty())
     {
         // available groups shouldn't be empty, re-query
+        // 可用组不应为空，重新查询
         getSystemPrivAndGroups();
         if (std::find(availableGroups.begin(), availableGroups.end(),
                       ipmiGrpName) != availableGroups.end())
@@ -862,6 +911,7 @@ Cc UserAccess::setUserName(const uint8_t userId, const std::string& userName)
     if (oldUser == userName)
     {
         // requesting to set the same user name, return success.
+        // 请求设置的用户名与当前相同，返回成功。
         return ccSuccess;
     }
 
@@ -870,6 +920,7 @@ Cc UserAccess::setUserName(const uint8_t userId, const std::string& userName)
     if (userName.empty() && !oldUser.empty())
     {
         // Delete existing user
+        // 删除已有用户
         sdbusplus::object_path tempUserPath(userObjBasePath);
         tempUserPath /= oldUser;
         std::string userPath(tempUserPath);
@@ -897,6 +948,7 @@ Cc UserAccess::setUserName(const uint8_t userId, const std::string& userName)
                 return ccUnspecifiedError;
             }
             // Create new user
+            // 创建新用户
             auto method =
                 bus.new_method_call(userMgrService, userMgrObjBasePath,
                                     userMgrInterface, createUserMethod);
@@ -926,6 +978,7 @@ Cc UserAccess::setUserName(const uint8_t userId, const std::string& userName)
         try
         {
             // User rename
+            // 重命名用户
             auto method =
                 bus.new_method_call(userMgrService, userMgrObjBasePath,
                                     userMgrInterface, renameUserMethod);
@@ -998,6 +1051,28 @@ static constexpr const char* oemPayloadStr = "OEM_payload";
  *  "std_payload7":[false,...<repeat 'ipmiMaxChannels - 1' times>],
  *  }
  */
+/* @brief 根据给定的 payload 访问详情构造 JSON 对象。
+ *   @param[in] stdPayload - 二维数组形式的 stdPayloadEnables1。（输入）
+ *   @param[in] oemPayload - 二维数组形式的 oemPayloadEnables1。（输入）
+ *   @details 输出 JSON 对象格式示例：
+ *   "payload_enabled":{
+ *   "OEM_payload0":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload1":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload2":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload3":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload4":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload5":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload6":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "OEM_payload7":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload0":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload1":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload2":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload3":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload4":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload5":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload6":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   "std_payload7":[false,...<重复 'ipmiMaxChannels - 1' 次>],
+ *   } */
 static const Json constructJsonPayloadEnables(
     const std::array<std::array<bool, ipmiMaxChannels>, payloadsPerByte>&
         stdPayload,
@@ -1050,11 +1125,13 @@ void UserAccess::updatePayloadAccessInUserInfo(
     for (size_t chIndex = 0; chIndex < ipmiMaxChannels; ++chIndex)
     {
         // Ensure that reserved/unsupported payloads are marked to zero.
+        // 确保保留/不支持的 payload 标记为 0。
         userInfo.payloadAccess[chIndex].stdPayloadEnables1.reset();
         userInfo.payloadAccess[chIndex].oemPayloadEnables1.reset();
         userInfo.payloadAccess[chIndex].stdPayloadEnables2Reserved.reset();
         userInfo.payloadAccess[chIndex].oemPayloadEnables2Reserved.reset();
         // Update SOL status as it is the only supported payload currently.
+        // 更新 SOL 状态，因为它是目前唯一支持的 payload。
         userInfo.payloadAccess[chIndex]
             .stdPayloadEnables1[static_cast<uint8_t>(ipmi::PayloadType::SOL)] =
             stdPayload[static_cast<uint8_t>(ipmi::PayloadType::SOL)][chIndex];
@@ -1091,6 +1168,7 @@ void UserAccess::readUserData()
     }
 
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     for (size_t usrIndex = 1; usrIndex <= ipmiMaxUsers; ++usrIndex)
     {
         Json userInfo = jsonUsersTbl[usrIndex - 1]; // json array starts with 0.
@@ -1104,6 +1182,7 @@ void UserAccess::readUserData()
         std::string userName = userInfo[jsonUserName].get<std::string>();
 
         // Fixed-width username buffer in struct
+        // 结构体中的定长用户名缓冲区
         safeUsernameCopyToBuffer(usersTbl.user[usrIndex].userName,
                                  sizeof(usersTbl.user[usrIndex].userName),
                                  userName);
@@ -1118,6 +1197,7 @@ void UserAccess::readUserData()
             userInfo[jsonAccCallbk].get<std::vector<bool>>();
 
         // Payload Enables Processing.
+        // 处理 Payload Enables。
         std::array<std::array<bool, ipmiMaxChannels>, payloadsPerByte>
             stdPayload = {};
         std::array<std::array<bool, ipmiMaxChannels>, payloadsPerByte>
@@ -1155,6 +1235,8 @@ void UserAccess::readUserData()
         {
             // Key not found in 'userInfo'; possibly an old JSON file. Use
             // default values for all payloads, and SOL payload default is true.
+            // 'userInfo' 中找不到该键，可能是旧的 JSON 文件。
+            // 对所有 payload 使用默认值，SOL payload 默认值为 true。
             stdPayload[static_cast<uint8_t>(ipmi::PayloadType::SOL)].fill(true);
         }
 
@@ -1193,6 +1275,7 @@ void UserAccess::readUserData()
     lg2::debug("User data read from IPMI data file");
     iUsrData.close();
     // Update the timestamp
+    // 更新时间戳
     fileLastUpdatedTime = getUpdatedFileTime();
     return;
 }
@@ -1204,6 +1287,7 @@ void UserAccess::writeUserData()
 
     Json jsonUsersTbl = Json::array();
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     for (size_t usrIndex = 1; usrIndex <= ipmiMaxUsers; ++usrIndex)
     {
         Json jsonUserInfo;
@@ -1274,6 +1358,7 @@ void UserAccess::writeUserData()
         throw std::runtime_error("Error in renaming IPMI user data file");
     }
     // Update the timestamp
+    // 更新时间戳
     fileLastUpdatedTime = getUpdatedFileTime();
     return;
 }
@@ -1284,6 +1369,7 @@ bool UserAccess::addUserEntry(const std::string& userName,
     UsersTbl* userData = getUsersTblPtr();
     size_t freeIndex = 0xFF;
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     for (size_t usrIndex = 1; usrIndex <= ipmiMaxUsers; ++usrIndex)
     {
         std::string curName =
@@ -1384,6 +1470,7 @@ void UserAccess::checkAndReloadUserData()
 UsersTbl* UserAccess::getUsersTblPtr()
 {
     // reload data before using it.
+    // 使用前重新加载数据。
     checkAndReloadUserData();
     return &usersTbl;
 }
@@ -1425,6 +1512,7 @@ void UserAccess::getSystemPrivAndGroups()
         }
     }
     // TODO: Implement Supported Privilege & Groups verification logic
+    // TODO：实现所支持的 Privilege 与 Groups 校验逻辑
     return;
 }
 
@@ -1480,6 +1568,7 @@ void UserAccess::initializeUserDataFile()
     std::fill(reinterpret_cast<uint8_t*>(&usersTbl),
               reinterpret_cast<uint8_t*>(&usersTbl) + sizeof(usersTbl), 0);
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     for (size_t userIndex = 1; userIndex <= ipmiMaxUsers; ++userIndex)
     {
         for (size_t chIndex = 0; chIndex < ipmiMaxChannels; ++chIndex)
@@ -1532,6 +1621,7 @@ void UserAccess::cacheUserDataFile()
         initializeUserDataFile();
     }
     // Create lock file if it does not exist
+    // 如果锁文件不存在则创建
     int fd = open(ipmiUserSignalLockFile, O_CREAT | O_TRUNC | O_SYNC,
                   S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
     if (fd < 0)
@@ -1545,6 +1635,8 @@ void UserAccess::cacheUserDataFile()
     sigHndlrLock = boost::interprocess::file_lock(ipmiUserSignalLockFile);
     // Register it for single object and single process either netipmid /
     // host-ipmid
+    // 为单个对象和单个进程（netipmid /
+    // host-ipmid）注册它
     if (userUpdatedSignal == nullptr && sigHndlrLock.try_lock())
     {
         lg2::debug("Registering signal handler");
@@ -1594,6 +1686,7 @@ void UserAccess::cacheUserDataFile()
     bool updateRequired = false;
     UsersTbl* userData = &usersTbl;
     // user index 0 is reserved, starts with 1
+    // 用户索引 0 保留，从 1 开始
     for (size_t usrIdx = 1; usrIdx <= ipmiMaxUsers; ++usrIdx)
     {
         if ((userData->user[usrIdx].userInSystem) &&
@@ -1614,6 +1707,7 @@ void UserAccess::cacheUserDataFile()
                 bool usrEnabled = false;
 
                 // User exist. Lets check and update other fields
+                // 用户已存在。检查并更新其他字段
                 getUserObjProperties(usrObj->second, usrGrps, usrPriv,
                                      usrEnabled);
                 if (std::find(usrGrps.begin(), usrGrps.end(), ipmiGrpName) ==
@@ -1621,16 +1715,21 @@ void UserAccess::cacheUserDataFile()
                 {
                     updateRequired = true;
                     // Group "ipmi" is removed so lets remove user in IPMI
+                    // 组 "ipmi" 已被移除，因此在 IPMI 中删除该用户
                     deleteUserIndex(usrIdx);
                 }
                 else
                 {
                     // Group "ipmi" is present so lets update other properties
                     // in IPMI
+                    // 组 "ipmi" 存在，因此更新 IPMI 中的
+                    // 其他属性
                     uint8_t priv = UserAccess::convertToIPMIPrivilege(usrPriv) &
                                    privMask;
                     // Update all channels priv, only if it is not equivalent to
                     // getUsrMgmtSyncIndex()
+                    // 仅当与 getUsrMgmtSyncIndex() 不同时，
+                    // 才更新所有通道的权限
                     if (userData->user[usrIdx]
                             .userPrivAccess[getUsrMgmtSyncIndex()]
                             .privilege != priv)
@@ -1652,6 +1751,7 @@ void UserAccess::cacheUserDataFile()
                 }
 
                 // We are done with this obj. lets delete from MAP
+                // 该对象已处理完毕，从 MAP 中删除
                 managedObjs.erase(usrObj);
             }
             else
@@ -1664,6 +1764,8 @@ void UserAccess::cacheUserDataFile()
 
     // Walk through remaining managedObj users list
     // Add them to ipmi data base
+    // 遍历剩余的 managedObj 用户列表
+    // 将他们添加到 ipmi 数据库
     for (const auto& usrObj : managedObjs)
     {
         std::vector<std::string> usrGrps;
@@ -1677,11 +1779,13 @@ void UserAccess::cacheUserDataFile()
         }
         getUserObjProperties(usrObj.second, usrGrps, usrPriv, usrEnabled);
         // Add 'ipmi' group users
+        // 添加属于 'ipmi' 组的用户
         if (std::find(usrGrps.begin(), usrGrps.end(), ipmiGrpName) !=
             usrGrps.end())
         {
             updateRequired = true;
             // CREATE NEW USER
+            // 创建新用户
             if (true != addUserEntry(userName, usrPriv, usrEnabled))
             {
                 break;
@@ -1692,6 +1796,7 @@ void UserAccess::cacheUserDataFile()
     if (updateRequired)
     {
         // All userData slots update done. Lets write the data
+        // 所有 userData 槽位已更新完毕。写入数据
         writeUserData();
     }
 

@@ -1,3 +1,10 @@
+
+/**
+ * @file oemcommands.hpp
+ * @brief NVIDIA OEM 命令的声明。
+ */
+/*  @file oemcommands.hpp
+ *  @brief NVIDIA OEM 命令的声明。 */
 /*
  * SPDX-FileCopyrightText: Copyright OpenBMC Authors
  * SPDX-License-Identifier: Apache-2.0

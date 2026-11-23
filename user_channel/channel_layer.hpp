@@ -1,3 +1,10 @@
+
+/**
+ * @file channel_layer.hpp
+ * @brief 通道层的声明。
+ */
+/*  @file channel_layer.hpp
+ *  @brief 通道层的声明。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 #pragma once
 #include <openssl/crypto.h>
 
@@ -44,11 +64,13 @@ static inline auto responseAccessModeNotSupportedForChannel()
 /**
  * @array of privilege levels
  */
+/*  @array 特权级别数组 */
 extern const std::array<std::string, PRIVILEGE_OEM + 1> privList;
 
 /**
  * @enum Channel Protocol Type (refer spec sec 6.4)
  */
+/*  @enum 通道协议类型（参见规范 6.4 节） */
 enum class EChannelProtocolType : uint8_t
 {
     na = 0x00,
@@ -67,6 +89,7 @@ enum class EChannelProtocolType : uint8_t
 /**
  * @enum Channel Medium Type (refer spec sec 6.5)
  */
+/*  @enum 通道介质类型（参见规范 6.5 节） */
 enum class EChannelMediumType : uint8_t
 {
     reserved = 0x00,
@@ -90,6 +113,8 @@ enum class EChannelMediumType : uint8_t
  * @enum Channel Session Type (refer spec sec 22.24 -
  * response data byte 5)
  */
+/*  @enum 通道会话类型（参见规范 22.24 节 -
+ *  响应数据第 5 字节） */
 enum class EChannelSessSupported : uint8_t
 {
     none = 0,
@@ -101,6 +126,7 @@ enum class EChannelSessSupported : uint8_t
 /**
  * @enum Channel Access Mode (refer spec sec 6.6)
  */
+/*  @enum 通道访问模式（参见规范 6.6 节） */
 enum class EChannelAccessMode : uint8_t
 {
     disabled = 0,
@@ -113,6 +139,8 @@ enum class EChannelAccessMode : uint8_t
  * @enum Authentication Types (refer spec sec 13.6 - IPMI
  * Session Header)
  */
+/*  @enum 认证类型（参见规范 13.6 节 - IPMI
+ *  会话头） */
 enum class EAuthType : uint8_t
 {
     none = (1 << 0x0),
@@ -125,9 +153,12 @@ enum class EAuthType : uint8_t
 
 // TODO: Remove duplicate 'PayloadType' definition from netipmid's message.hpp
 // to phosphor-ipmi-host/include
+// TODO：从 netipmid 的 message.hpp 中移除重复的 'PayloadType' 定义
+// 并移到 phosphor-ipmi-host/include 下
 /**
  * @enum Payload Types (refer spec sec 13.27.3)
  */
+/*  @enum Payload 类型（参见规范 13.27.3 节） */
 enum class PayloadType : uint8_t
 {
     IPMI = 0x00,
@@ -145,6 +176,8 @@ enum class PayloadType : uint8_t
  * @enum Access mode for channel access set/get (refer spec
  * sec 22.22 - request byte 2[7:6])
  */
+/*  @enum 通道访问 set/get 的访问模式（参见规范
+ *  22.22 节 - 请求字节 2[7:6]） */
 typedef enum
 {
     doNotSet = 0x00,
@@ -157,6 +190,8 @@ typedef enum
  * @enum Access set flag to determine changes that has to be updated
  * in channel access data configuration.
  */
+/*  @enum Access set 标志，用于确定通道访问数据配置中
+ *  需要更新的变更项。 */
 enum AccessSetFlag
 {
     setAccessMode = (1 << 0),
@@ -172,6 +207,10 @@ enum AccessSetFlag
  * specification and used in Get / Set channel access (refer spec sec 22.22
  * & 22.23)
  */
+/* @struct ChannelAccess
+ *   用于存储通道访问相关信息的结构体，定义于 IPMI
+ *   规范并用于 Get / Set channel access（参见规范 22.22
+ *   与 22.23 节） */
 struct ChannelAccess
 {
     uint8_t accessMode;
@@ -187,6 +226,10 @@ struct ChannelAccess
  *  channel type and information as defined in IPMI specification. (refer spec
  * sec 22.22 & 22.23)
  */
+/* @struct ChannelInfo
+ *   用于存储通道信息数据的结构体，标识 IPMI 规范中
+ *   定义的各通道类型与信息。（参见规范 22.22 与
+ *   22.23 节） */
 struct ChannelInfo
 {
     uint8_t mediumType;
@@ -195,6 +238,8 @@ struct ChannelInfo
     bool isIpmi; // Is session IPMI
     // This is used in Get LAN Configuration parameter.
     // This holds the supported AuthTypes for a given channel.
+    // 这用于 Get LAN Configuration 参数。
+    // 它保存给定通道所支持的 AuthTypes。
     uint8_t authTypeSupported;
 };
 
@@ -204,6 +249,9 @@ struct ChannelInfo
  *
  *  @return true if valid, false otherwise
  */
+/* @brief 判断通道是否有效
+ *  @param[in] chNum - 通道号
+ *  @return 有效返回 true，否则返回 false */
 bool isValidChannel(const uint8_t chNum);
 
 /** @brief determines whether channel device exist
@@ -212,6 +260,9 @@ bool isValidChannel(const uint8_t chNum);
  *
  *  @return true if valid, false otherwise
  */
+/* @brief 判断通道设备是否存在
+ *  @param[in] chNum - 通道号
+ *  @return 有效返回 true，否则返回 false */
 bool doesDeviceExist(const uint8_t chNum);
 
 /** @brief determines whether privilege limit is valid
@@ -220,6 +271,9 @@ bool doesDeviceExist(const uint8_t chNum);
  *
  *  @return true if valid, false otherwise
  */
+/* @brief 判断权限上限是否有效
+ *  @param[in] privLimit - 权限上限
+ *  @return 有效返回 true，否则返回 false */
 bool isValidPrivLimit(const uint8_t privLimit);
 
 /** @brief determines whether access mode  is valid
@@ -228,6 +282,9 @@ bool isValidPrivLimit(const uint8_t privLimit);
  *
  *  @return true if valid, false otherwise
  */
+/* @brief 判断访问模式是否有效
+ *  @param[in] accessMode - 访问模式
+ *  @return 有效返回 true，否则返回 false */
 bool isValidAccessMode(const uint8_t accessMode);
 
 /** @brief determines valid authentication type based on channel number
@@ -237,6 +294,10 @@ bool isValidAccessMode(const uint8_t accessMode);
  *
  *  @return true if valid, false otherwise
  */
+/* @brief 根据通道号判断认证类型是否有效
+ *  @param[in] chNum - 通道号
+ *  @param[in] authType - 认证类型
+ *  @return 有效返回 true，否则返回 false */
 bool isValidAuthType(const uint8_t chNum, const EAuthType& authType);
 
 /** @brief determines supported session type of a channel
@@ -245,6 +306,9 @@ bool isValidAuthType(const uint8_t chNum, const EAuthType& authType);
  *
  *  @return EChannelSessSupported - supported session type
  */
+/* @brief 确定某通道支持的会话类型
+ *  @param[in] chNum - 通道号
+ *  @return EChannelSessSupported - 支持的会话类型 */
 EChannelSessSupported getChannelSessionSupport(const uint8_t chNum);
 
 /** @brief determines number of active sessions on a channel
@@ -253,6 +317,9 @@ EChannelSessSupported getChannelSessionSupport(const uint8_t chNum);
  *
  *  @return number of active sessions
  */
+/* @brief 确定某通道上的活动会话数
+ *  @param[in] chNum - 通道号
+ *  @return 活动会话数 */
 int getChannelActiveSessions(const uint8_t chNum);
 
 /** @brief determines maximum transfer size for a channel
@@ -261,12 +328,17 @@ int getChannelActiveSessions(const uint8_t chNum);
  *
  *  @return maximum bytes that can be transferred on this channel
  */
+/* @brief 确定某通道的最大传输大小
+ *  @param[in] chNum - 通道号
+ *  @return 该通道上可传输的最大字节数 */
 size_t getChannelMaxTransferSize(uint8_t chNum);
 
 /** @brief initializes channel management
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 初始化通道管理
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc ipmiChannelInit();
 
 /** @brief provides channel info details
@@ -276,6 +348,10 @@ Cc ipmiChannelInit();
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 提供通道信息详情
+ *  @param[in] chNum - 通道号
+ *  @param[out] chInfo - 通道信息详情
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc getChannelInfo(const uint8_t chNum, ChannelInfo& chInfo);
 
 /** @brief provides channel access data
@@ -285,6 +361,10 @@ Cc getChannelInfo(const uint8_t chNum, ChannelInfo& chInfo);
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 提供通道访问数据
+ *  @param[in] chNum - 通道号
+ *  @param[out] chAccessData - 通道访问数据
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc getChannelAccessData(const uint8_t chNum, ChannelAccess& chAccessData);
 
 /** @brief provides function to convert current channel number (0xE)
@@ -295,6 +375,11 @@ Cc getChannelAccessData(const uint8_t chNum, ChannelAccess& chAccessData);
  *  @return same channel number or proper channel number for current channel
  * number (0xE).
  */
+/* @brief 提供转换当前通道号（0xE）的函数
+ *  @param[in] chNum - 通道号
+ *  @param[in] devChannel - 设备提供的通道号（非 0xE）
+ *  @return 返回相同的通道号，或当前通道号
+ * （0xE）对应的正确通道号。 */
 static inline uint8_t convertCurrentChannelNum(const uint8_t chNum,
                                                const uint8_t devChannel)
 {
@@ -313,6 +398,11 @@ static inline uint8_t convertCurrentChannelNum(const uint8_t chNum,
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 设置通道访问数据
+ *  @param[in] chNum - 通道号
+ *  @param[in] chAccessData - 通道访问数据
+ *  @param[in] setFlag - 指示可更新字段的标志
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc setChannelAccessData(const uint8_t chNum, const ChannelAccess& chAccessData,
                         const uint8_t setFlag);
 
@@ -323,6 +413,10 @@ Cc setChannelAccessData(const uint8_t chNum, const ChannelAccess& chAccessData,
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 获取通道访问持久数据
+ *  @param[in] chNum - 通道号
+ *  @param[out] chAccessData - 通道访问数据
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc getChannelAccessPersistData(const uint8_t chNum,
                                ChannelAccess& chAccessData);
 
@@ -334,6 +428,11 @@ Cc getChannelAccessPersistData(const uint8_t chNum,
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 设置通道访问持久数据
+ *  @param[in] chNum - 通道号
+ *  @param[in] chAccessData - 通道访问数据
+ *  @param[in] setFlag - 指示可更新字段的标志
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc setChannelAccessPersistData(const uint8_t chNum,
                                const ChannelAccess& chAccessData,
                                const uint8_t setFlag);
@@ -345,6 +444,10 @@ Cc setChannelAccessPersistData(const uint8_t chNum,
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 提供该通道支持的认证类型
+ *  @param[in] chNum - 通道号
+ *  @param[out] authTypeSupported - 支持的认证类型
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc getChannelAuthTypeSupported(const uint8_t chNum, uint8_t& authTypeSupported);
 
 /** @brief provides enabled authentication type for the channel
@@ -355,6 +458,11 @@ Cc getChannelAuthTypeSupported(const uint8_t chNum, uint8_t& authTypeSupported);
  *
  *  @return ccSuccess for success, others for failure.
  */
+/* @brief 提供该通道已启用的认证类型
+ *  @param[in] chNum - 通道号
+ *  @param[in] priv - 权限
+ *  @param[out] authType - 已启用的认证类型
+ *  @return 成功返回 ccSuccess，否则返回其他值。 */
 Cc getChannelEnabledAuthType(const uint8_t chNum, const uint8_t priv,
                              EAuthType& authType);
 
@@ -364,6 +472,9 @@ Cc getChannelEnabledAuthType(const uint8_t chNum, const uint8_t priv,
  *
  *  @return the LAN channel name (i.e. eth0)
  */
+/* @brief 从 IPMI 通道号检索 LAN 通道名
+ *  @param[in] chNum - 通道号
+ *  @return LAN 通道名（即 eth0） */
 std::string getChannelName(const uint8_t chNum);
 
 /** @brief Retrieves the LAN channel number from the IPMI channel name
@@ -372,6 +483,9 @@ std::string getChannelName(const uint8_t chNum);
  *
  *  @return the LAN channel number
  */
+/* @brief 从 IPMI 通道名检索 LAN 通道号
+ *  @param[in] chName - IPMI 通道名（即 eth0）
+ *  @return LAN 通道号 */
 uint8_t getChannelByName(const std::string& chName);
 
 /** @brief determines whether payload type is valid
@@ -380,6 +494,9 @@ uint8_t getChannelByName(const std::string& chName);
  *
  *	@return true if valid, false otherwise
  */
+/* @brief 判断 payload 类型是否有效
+ *  @param[in] payload type - Payload 类型
+ *  @return 有效返回 true，否则返回 false */
 bool isValidPayloadType(const PayloadType payloadType);
 
 } // namespace ipmi

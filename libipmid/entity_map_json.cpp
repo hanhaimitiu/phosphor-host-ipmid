@@ -1,3 +1,10 @@
+
+/**
+ * @file entity_map_json.cpp
+ * @brief entity-map JSON 解析的实现。
+ */
+/*  @file entity_map_json.cpp
+ *  @brief entity-map JSON 解析的实现。 */
 #include <ipmid/entity_map_json.hpp>
 #include <ipmid/types.hpp>
 #include <nlohmann/json.hpp>
@@ -22,6 +29,8 @@ EntityInfoMapContainer* EntityInfoMapContainer::getContainer()
         /* TODO: With multi-threading this would all need to be locked so
          * the first thread to hit it would set it up.
          */
+        /* TODO：若使用多线程，这些都需要加锁，
+         * 以便第一个访问它的线程完成初始化。 */
         EntityInfoMap builtEntityMap = buildEntityMapFromFile();
         instance = std::unique_ptr<EntityInfoMapContainer>(
             new EntityInfoMapContainer(builtEntityMap));
@@ -73,6 +82,9 @@ EntityInfoMap buildJsonEntityMap(const nlohmann::json& data)
              * containerEntityId, containerEntityInstance, isList, isLinked,
              * entities[4]
              */
+            /* 这是一个数组条目，包含以下字段：id、
+             * containerEntityId、containerEntityInstance、isList、isLinked、
+             * entities[4] */
             EntityInfo obj;
             Id recordId = entry.at("id").get<Id>();
             obj.containerEntityId =
@@ -109,6 +121,7 @@ EntityInfoMap buildJsonEntityMap(const nlohmann::json& data)
     catch (const std::exception& e)
     {
         /* If any entry is invalid, the entire file cannot be trusted. */
+        /* 如果任何条目无效，则整个文件都不可信。 */
         builtMap.clear();
     }
 

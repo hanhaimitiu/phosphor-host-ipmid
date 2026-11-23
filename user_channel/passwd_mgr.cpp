@@ -1,3 +1,10 @@
+
+/**
+ * @file passwd_mgr.cpp
+ * @brief 密码管理：IPMI 用户密码的读写。
+ */
+/*  @file passwd_mgr.cpp
+ *  @brief 密码管理：IPMI 用户密码的读写。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 
 #include "passwd_mgr.hpp"
 
@@ -48,6 +68,7 @@ constexpr mode_t modeMask =
 /*
  * Meta data struct for encrypted password file
  */
+/*  加密密码文件的元数据结构体 */
 struct MetaPassStruct
 {
     char signature[10];
@@ -69,6 +90,7 @@ void PasswdMgr::restrictFilesPermission(void)
 {
     struct stat st = {};
     // Restrict file permission to owner read & write
+    // 将文件权限限制为所有者可读写
     if (stat(passwdFileName, &st) == 0)
     {
         if ((st.st_mode & modeMask) != (S_IRUSR | S_IWUSR))
@@ -110,6 +132,9 @@ int PasswdMgr::updateUserEntry(const std::string& userName,
     // Check file time stamp to know passwdMapList is up-to-date.
     // If not up-to-date, then updatePasswdSpecialFile will read and
     // check the user entry existence.
+    // 检查文件时间戳以判断 passwdMapList 是否为最新。
+    // 如果不是最新，则 updatePasswdSpecialFile 会读取
+    // 并检查用户条目是否存在。
     if (fileLastUpdatedTime == updatedTime && updatedTime != -EIO)
     {
         if (passwdMapList.find(userName) == passwdMapList.end())
@@ -120,6 +145,7 @@ int PasswdMgr::updateUserEntry(const std::string& userName,
     }
 
     // Write passwdMap to Encrypted file
+    // 将 passwdMap 写入加密文件
     if (updatePasswdSpecialFile(userName, newUserName) != 0)
     {
         lg2::debug("Passwd file update failed");
@@ -158,9 +184,11 @@ int PasswdMgr::encryptDecryptData(
     if (!doEncrypt)
     {
         // verify MAC before decrypting the data.
+        // 解密数据前先验证 MAC。
         std::array<uint8_t, EVP_MAX_MD_SIZE> calMac;
         size_t calMacLen = calMac.size();
         // calculate MAC for the encrypted message.
+        // 计算加密消息的 MAC。
         if (nullptr ==
             HMAC(EVP_sha256(), key, keyLen, inBytes, inBytesLen, calMac.data(),
                  reinterpret_cast<unsigned int*>(&calMacLen)))
@@ -188,6 +216,7 @@ int PasswdMgr::encryptDecryptData(
     EVP_CIPHER_CTX_set_padding(ctx.get(), 1);
 
     // Set key & IV
+    // 设置 key 和 IV
     int retval = EVP_CipherInit_ex(ctx.get(), cipher, nullptr, key, iv,
                                    static_cast<int>(doEncrypt));
     if (!retval)
@@ -222,6 +251,7 @@ int PasswdMgr::encryptDecryptData(
     if (doEncrypt)
     {
         // Create MAC for the encrypted message
+        // 为加密消息生成 MAC
         if (nullptr == HMAC(EVP_sha256(), key, keyLen, outBytes, *outBytesLen,
                             mac, reinterpret_cast<unsigned int*>(macLen)))
         {
@@ -235,6 +265,7 @@ int PasswdMgr::encryptDecryptData(
 void PasswdMgr::initPasswordMap(void)
 {
     // TODO  phosphor-host-ipmid#170 phosphor::user::shadow::Lock lock{};
+    // TODO  phosphor-host-ipmid#170 phosphor::user::shadow::Lock lock{};
     SecureString dataBuf;
 
     if (readPasswdFileData(dataBuf) != 0)
@@ -246,6 +277,7 @@ void PasswdMgr::initPasswordMap(void)
     if (dataBuf.size() != 0)
     {
         // populate the user list with password
+        // 用密码填充用户列表
         char* outPtr = dataBuf.data();
         char* nToken = nullptr;
         char* linePtr = strtok_r(outPtr, "\n", &nToken);
@@ -266,6 +298,7 @@ void PasswdMgr::initPasswordMap(void)
     }
 
     // Update the timestamp
+    // 更新时间戳
     fileLastUpdatedTime = getUpdatedFileTime();
     return;
 }
@@ -294,6 +327,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
     }
 
     // calculate file size and read the data
+    // 计算文件大小并读取数据
     passwdFile.seekg(0, std::ios::end);
     ssize_t fileSize = passwdFile.tellg();
     passwdFile.seekg(0, std::ios::beg);
@@ -306,6 +340,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
     }
 
     // verify the signature first
+    // 先验证签名
     MetaPassStruct* metaData = reinterpret_cast<MetaPassStruct*>(input.data());
     if (std::strncmp(metaData->signature, META_PASSWD_SIG,
                      sizeof(metaData->signature)))
@@ -316,6 +351,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
 
     size_t inBytesLen = metaData->dataSize + metaData->padSize;
     // If data is empty i.e no password map then return success
+    // 如果数据为空（即没有密码映射）则返回成功
     if (inBytesLen == 0)
     {
         lg2::debug("Empty password file");
@@ -323,6 +359,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
     }
 
     // compute the key needed to decrypt
+    // 计算解密所需的 key
     std::array<uint8_t, EVP_MAX_KEY_LENGTH> key;
     auto keyLen = key.size();
     if (nullptr == HMAC(EVP_sha256(), keyBuff.data(), keyBuff.size(),
@@ -334,6 +371,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
     }
 
     // decrypt the data
+    // 解密数据
     uint8_t* iv = input.data() + sizeof(*metaData) + metaData->hashSize;
     size_t ivLen = metaData->ivSize;
     uint8_t* inBytes = iv + ivLen;
@@ -342,6 +380,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
 
     size_t outBytesLen = 0;
     // Resize to actual data size
+    // 调整为实际数据大小
     outBytes.resize(inBytesLen + EVP_MAX_BLOCK_LENGTH, '\0');
     if (encryptDecryptData(false, EVP_aes_128_cbc(), key.data(), keyLen, iv,
                            ivLen, inBytes, inBytesLen, mac, &macLen,
@@ -352,6 +391,7 @@ int PasswdMgr::readPasswdFileData(SecureString& outBytes)
         return -EIO;
     }
     // Resize the vector to outBytesLen
+    // 将 vector 调整为 outBytesLen
     outBytes.resize(outBytesLen);
 
     OPENSSL_cleanse(key.data(), keyLen);
@@ -364,6 +404,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
                                        const std::string& newUserName)
 {
     // TODO  phosphor-host-ipmid#170 phosphor::user::shadow::Lock lock{};
+    // TODO  phosphor-host-ipmid#170 phosphor::user::shadow::Lock lock{};
 
     size_t bytesWritten = 0;
     size_t inBytesLen = 0;
@@ -373,6 +414,8 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
 
     // Read the encrypted file and get the file data
     // Check user existence and return if not exist.
+    // 读取加密文件并获取文件数据
+    // 检查用户是否存在，不存在则返回。
     if (readPasswdFileData(dataBuf) != 0)
     {
         lg2::debug("Error in reading the encrypted pass file");
@@ -428,6 +471,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     }
 
     // Read the key buff from key file
+    // 从 key 文件读取 key 缓冲区
     std::array<uint8_t, maxKeySize> keyBuff;
     std::ifstream keyFile(encryptKeyFileName, std::ios::in | std::ios::binary);
     if (!keyFile.good())
@@ -444,6 +488,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     keyFile.close();
 
     // Read the original passwd file mode
+    // 读取原始 passwd 文件的权限模式
     struct stat st = {};
     if (stat(passwdFileName, &st) != 0)
     {
@@ -452,6 +497,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     }
 
     // Create temporary file for write
+    // 创建用于写入的临时文件
     std::string pwdFile(passwdFileName);
     std::vector<char> tempFileName(pwdFile.begin(), pwdFile.end());
     std::vector<char> fileTemplate = {'_', '_', 'X', 'X', 'X',
@@ -469,6 +515,9 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     // Open the temp file for writing from provided fd
     // By "true", remove it at exit if still there.
     // This is needed to cleanup the temp file at exception
+    // 使用提供的 fd 打开临时文件进行写入
+    // 传入 "true"，退出时若仍存在则将其删除。
+    // 这是为了在发生异常时清理临时文件
     phosphor::user::File temp(fd, strTempFileName, "w", true);
     if ((temp)() == nullptr)
     {
@@ -478,6 +527,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     }
 
     // Set the file mode as read-write for owner only
+    // 将文件权限设置为仅所有者可读写
     if (fchmod(fileno((temp)()), S_IRUSR | S_IWUSR) < 0)
     {
         lg2::debug("Error setting fchmod for temp file");
@@ -501,6 +551,8 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
 
     // Create random hash and generate hash key which will be used for
     // encryption.
+    // 生成随机哈希并生成 hash key，
+    // 它将用于加密。
     if (RAND_bytes(hash.data(), hashLen) != 1)
     {
         lg2::debug("Hash generation failed, bailing out");
@@ -515,6 +567,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     }
 
     // Generate IV values
+    // 生成 IV 值
     if (RAND_bytes(iv.data(), ivLen) != 1)
     {
         lg2::debug("IV generation failed, bailing out");
@@ -522,6 +575,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     }
 
     // Encrypt the input data
+    // 加密输入数据
     std::vector<uint8_t> outBytes(inBytesLen + EVP_MAX_BLOCK_LENGTH);
     size_t outBytesLen = 0;
     if (inBytesLen != 0)
@@ -539,6 +593,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     OPENSSL_cleanse(key.data(), keyLen);
 
     // Update the meta password structure.
+    // 更新密码元数据结构体。
     MetaPassStruct metaData = {META_PASSWD_SIG, {0, 0}, 0, 0, 0, 0, 0};
     metaData.hashSize = hashLen;
     metaData.ivSize = ivLen;
@@ -585,6 +640,7 @@ int PasswdMgr::updatePasswdSpecialFile(const std::string& userName,
     OPENSSL_cleanse(iv.data(), ivLen);
 
     // Rename the tmp file to actual file
+    // 将临时文件重命名为实际文件
     if (std::rename(strTempFileName.data(), passwdFileName) != 0)
     {
         lg2::debug("Failed to rename tmp file to ipmi-pass");

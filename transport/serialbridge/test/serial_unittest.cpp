@@ -8,6 +8,7 @@ namespace serialbridge
 /**
  * @brief Table of special characters
  */
+/*  @brief 特殊字符表 */
 std::unordered_map<uint8_t, uint8_t> testsets = {
     {bmStart, 0xB0},     /* start */
     {bmStop, 0xB5},      /* stop */

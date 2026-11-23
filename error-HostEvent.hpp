@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file error-HostEvent.hpp
+ * @brief sdbus++ 生成的 Host 事件（Error/Event）定义头。
+ */
+/* @file error-HostEvent.hpp
+ * @brief sdbus++ 生成的 Host 事件（Error/Event）定义头。 */
+
 #include <sdbusplus/exception.hpp>
 
 #include <cerrno>

@@ -1,3 +1,10 @@
+
+/**
+ * @file read_fru_data.cpp
+ * @brief 分块读取 FRU 数据（含重试与缓存）的实现。
+ */
+/* @file read_fru_data.cpp
+ * @brief 分块读取 FRU 数据（含重试与缓存）的实现。 */
 #include "read_fru_data.hpp"
 
 #include "fruread.hpp"
@@ -31,6 +38,11 @@ namespace cache
 // the specified offset and count.
 // Caching the data which will be invalidated when ever there
 // is a change in FRU properties.
+// 用户先发起 read FRU info area 命令，随后
+// 发起 FRU read 命令。数据按指定的 offset
+// 和 count 分小块读取。
+// 数据会被缓存，当 FRU 属性发生变化时
+// 缓存将失效。
 FRUAreaMap fruMap;
 } // namespace cache
 /**
@@ -41,6 +53,11 @@ FRUAreaMap fruMap;
  * @param[in] path Object path
  * @return map of properties
  */
+/* @brief 从 Inventory 读取指定接口的
+ *  所有属性值。
+ * @param[in] intf 接口
+ * @param[in] path 对象路径
+ * @return 属性映射 */
 ipmi::PropertyMap readAllProperties(const std::string& intf,
                                     const std::string& path)
 {
@@ -50,6 +67,7 @@ ipmi::PropertyMap readAllProperties(const std::string& intf,
     std::string objPath;
 
     // Is the path the full dbus path?
+    // 该路径是否为完整的 dbus 路径？
     if (path.find(xyzPrefix) != std::string::npos)
     {
         service = ipmi::getService(bus, intf, path);
@@ -72,6 +90,7 @@ ipmi::PropertyMap readAllProperties(const std::string& intf,
     catch (const sdbusplus::exception_t& e)
     {
         // If property is not found simply return empty value
+        // 若未找到属性，直接返回空值
         lg2::error("Error in reading property values: {ERROR}, path: {PATH}, "
                    "interface: {INTERFACE}",
                    "ERROR", e, "PATH", objPath, "INTERFACE", intf);
@@ -88,6 +107,7 @@ void processFruPropChange(sdbusplus::message_t& msg)
     }
     std::string path = msg.get_path();
     // trim the object base path, if found at the beginning
+    // 若在开头发现对象基础路径则将其去掉
     if (path.compare(0, strlen(invObjPath), invObjPath) == 0)
     {
         path.erase(0, strlen(invObjPath));
@@ -107,6 +127,7 @@ void processFruPropChange(sdbusplus::message_t& msg)
 }
 
 // register for fru property change
+// 注册 FRU 属性变更监听
 int registerCallbackHandler()
 {
     if (matchPtr == nullptr)
@@ -128,6 +149,9 @@ int registerCallbackHandler()
  * @param[in] fruNum  FRU id
  * @return populate FRU Inventory data
  */
+/* @brief 从 Inventory 读取 FRU 属性值
+ * @param[in] fruNum  FRU id
+ * @return 填充 FRU Inventory 数据 */
 FruInventoryData readDataFromInventory(const FRUId& fruNum)
 {
     auto iter = frus.find(fruNum);
@@ -171,6 +195,7 @@ const FruAreaData& getFruAreaData(const FRUId& fruNum)
     auto invData = readDataFromInventory(fruNum);
 
     // Build area info based on inventory data
+    // 根据 inventory 数据构建区信息
     FruAreaData newdata = buildFruAreaData(std::move(invData));
     cache::fruMap.emplace(fruNum, std::move(newdata));
     return cache::fruMap.at(fruNum);

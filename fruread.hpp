@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file fruread.hpp
+ * @brief FRU 读取回调接口：由具体平台实现注册。
+ */
+/* @file fruread.hpp
+ * @brief FRU 读取回调接口：由具体平台实现注册。 */
+
 #include <systemd/sd-bus.h>
 
 #include <array>

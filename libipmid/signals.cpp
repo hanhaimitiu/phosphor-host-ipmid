@@ -1,3 +1,10 @@
+
+/**
+ * @file signals.cpp
+ * @brief 插件可用的 sd-bus 信号辅助封装。
+ */
+/*  @file signals.cpp
+ *  @brief 插件可用的 sd-bus 信号辅助封装。 */
 #include <boost/asio/signal_set.hpp>
 #include <ipmid/api.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -21,6 +28,7 @@ class SignalHandler
     ~SignalHandler()
     {
         // unregister with asio to unmask the signal
+        // 从 asio 注销以解除对该信号的屏蔽
         signal->cancel();
         signal->clear();
     }
@@ -29,12 +37,14 @@ class SignalHandler
                          const std::function<SignalResponse(int)>& handler)
     {
         // check for initial placement
+        // 检查初始插入位置
         if (handlers.empty() || std::get<0>(handlers.front()) < prio)
         {
             handlers.emplace_front(std::make_tuple(prio, handler));
             return;
         }
         // walk the list and put it in the right place
+        // 遍历列表并把它放到正确的位置
         auto j = handlers.begin();
         for (auto i = j; i != handlers.end() && std::get<0>(*i) > prio; i++)
         {
@@ -61,6 +71,7 @@ class SignalHandler
             }
         }
         // start the wait for the next signal
+        // 开始等待下一个信号
         asyncWait();
     }
 
@@ -79,6 +90,9 @@ class SignalHandler
 // SIGRTMAX is defined as a non-constexpr function call and thus cannot be used
 // as an array size. Get around this by making a vector and resizing it the
 // first time it is needed
+// SIGRTMAX 被定义为一个非 constexpr 的函数调用，因此不能
+// 用作数组大小。解决方法是改用 vector，并在第一次需要时
+// 调整其大小。
 std::vector<std::unique_ptr<SignalHandler>> signals;
 
 } // namespace

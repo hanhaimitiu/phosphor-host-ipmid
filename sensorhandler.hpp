@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file sensorhandler.hpp
+ * @brief legacy 传感器命令的声明。
+ */
+/* @file sensorhandler.hpp
+ * @brief legacy 传感器命令的声明。 */
+
 #include <stdint.h>
 
 #include <ipmid/api.hpp>
@@ -11,6 +18,8 @@
  * @enum device_type
  * IPMI FRU device types
  */
+/* @enum device_type
+ * IPMI FRU 设备类型 */
 enum device_type
 {
     IPMI_PHYSICAL_FRU = 0x00,
@@ -18,6 +27,7 @@ enum device_type
 };
 
 // Discrete sensor types.
+// 离散 sensor 类型。
 enum ipmi_sensor_types
 {
     IPMI_SENSOR_TEMP = 0x01,
@@ -29,6 +39,7 @@ enum ipmi_sensor_types
 
 /** @brief Custom exception for reading sensors that are not functional.
  */
+/* @brief 用于读取非功能性 sensor 的自定义异常。 */
 struct SensorFunctionalError : public std::exception
 {
     const char* what() const noexcept
@@ -89,10 +100,12 @@ static const uint8_t LENGTH_MASK = 0x1F;
 /**
  * Get SDR
  */
+/* 获取 SDR */
 namespace get_sdr
 {
 
 // Record header
+// 记录头
 struct SensorDataRecordHeader
 {
     uint16_t recordId;
@@ -112,6 +125,7 @@ enum SensorDataRecordType
 };
 
 // Record key
+// 记录键
 struct SensorDataRecordKey
 {
     uint8_t ownerId;
@@ -123,6 +137,8 @@ struct SensorDataRecordKey
  *
  *  FRU Device Locator Record(key) - SDR Type 11
  */
+/* @struct SensorDataFruRecordKey
+ *  FRU 设备定位记录（key）- SDR Type 11 */
 struct SensorDataFruRecordKey
 {
     uint8_t deviceAddress;
@@ -135,6 +151,8 @@ struct SensorDataFruRecordKey
  *
  *  Entity Association Record(key) - SDR Type 8
  */
+/* @struct SensorDataEntityRecordKey
+ *  实体关联记录（key）- SDR Type 8 */
 struct SensorDataEntityRecordKey
 {
     uint8_t containerEntityId;
@@ -203,6 +221,8 @@ inline void setFlags(bool isList, bool isLinked, SensorDataEntityRecordKey& key)
  *
  *  Response structure for Get Sensor Thresholds command
  */
+/* @struct GetSensorThresholdsResponse
+ *  Get Sensor Thresholds 命令的响应结构 */
 struct GetSensorThresholdsResponse
 {
     uint8_t validMask;           //!< valid mask
@@ -215,6 +235,7 @@ struct GetSensorThresholdsResponse
 } __attribute__((packed));
 
 // Body - full record
+// 主体 - 完整记录
 #define FULL_RECORD_ID_STR_MAX_LENGTH 16
 
 static const int FRU_RECORD_DEVICE_ID_MAX_LENGTH = 16;
@@ -264,6 +285,8 @@ struct SensorDataFullRecordBody
  *
  *  Compact Sensor Record(body) - SDR Type 2
  */
+/* @struct SensorDataCompactRecord
+ *  紧凑型 Sensor 记录（body）- SDR Type 2 */
 struct SensorDataCompactRecordBody
 {
     uint8_t entityId;
@@ -291,6 +314,8 @@ struct SensorDataCompactRecordBody
  *
  *  Event Only Sensor Record(body) - SDR Type 3
  */
+/* @struct SensorDataEventRecord
+ *  仅事件 Sensor 记录（body）- SDR Type 3 */
 struct SensorDataEventRecordBody
 {
     uint8_t entityId;
@@ -309,6 +334,8 @@ struct SensorDataEventRecordBody
  *
  *  FRU Device Locator Record(body) - SDR Type 11
  */
+/* @struct SensorDataFruRecordBody
+ *  FRU 设备定位记录（body）- SDR Type 11 */
 struct SensorDataFruRecordBody
 {
     uint8_t reserved;
@@ -325,6 +352,8 @@ struct SensorDataFruRecordBody
  *
  *  Entity Association Record(body) - SDR Type 8
  */
+/* @struct SensorDataEntityRecordBody
+ *  实体关联记录（body）- SDR Type 8 */
 struct SensorDataEntityRecordBody
 {
     uint8_t entityId2;
@@ -501,9 +530,11 @@ inline void setB(uint16_t b, SensorDataFullRecordBody& body)
 inline void setAccuracy(uint16_t acc, SensorDataFullRecordBody& body)
 {
     // bottom 6 bits
+    // 低 6 位
     body.bMsbAndAccuracyLsb &= ~0x3f;
     body.bMsbAndAccuracyLsb |= acc & 0x3f;
     // top 4 bits
+    // 高 4 位
     body.accuracyAndSensorDirection &= 0x0f;
     body.accuracyAndSensorDirection |= ((acc >> 6) & 0xf) << 4;
 };
@@ -581,6 +612,8 @@ inline void setReadableMask(uint8_t mask, SensorDataFullRecordBody& body)
 
 // More types contained in section 43.17 Sensor Unit Type Codes,
 // IPMI spec v2 rev 1.1
+// 更多类型见 IPMI spec v2 rev 1.1 第 43.17 节
+// Sensor Unit Type Codes。
 enum SensorUnitTypeCodes
 {
     SENSOR_UNIT_UNSPECIFIED = 0,
@@ -605,6 +638,8 @@ struct SensorDataFullRecord
  *
  *  Compact Sensor Record - SDR Type 2
  */
+/* @struct SensorDataComapactRecord
+ *  紧凑型 Sensor 记录 - SDR Type 2 */
 struct SensorDataCompactRecord
 {
     SensorDataRecordHeader header;
@@ -616,6 +651,8 @@ struct SensorDataCompactRecord
  *
  *  Event Only Sensor Record - SDR Type 3
  */
+/* @struct SensorDataEventRecord
+ *  仅事件 Sensor 记录 - SDR Type 3 */
 struct SensorDataEventRecord
 {
     SensorDataRecordHeader header;
@@ -627,6 +664,8 @@ struct SensorDataEventRecord
  *
  *  FRU Device Locator Record - SDR Type 11
  */
+/* @struct SensorDataFruRecord
+ *  FRU 设备定位记录 - SDR Type 11 */
 struct SensorDataFruRecord
 {
     SensorDataRecordHeader header;
@@ -638,6 +677,8 @@ struct SensorDataFruRecord
  *
  *  Entity Association Record - SDR Type 8
  */
+/* @struct SensorDataEntityRecord
+ *  实体关联记录 - SDR Type 8 */
 struct SensorDataEntityRecord
 {
     SensorDataRecordHeader header;
@@ -662,6 +703,11 @@ namespace sensor
  * @param[in] offset - offset number.
  * @param[in/out] resp - get sensor reading response.
  */
+/* @brief 将 offset 映射到 assertion 字节中对应的位。
+ * 离散 sensor 最多支持 14 个状态。offset 0-7 存放在
+ * 一个字节中，offset 8-14 存放在第二个字节中。
+ * @param[in] offset - offset 编号。
+ * @param[in/out] resp - get sensor reading 响应。 */
 inline void setOffset(uint8_t offset, ipmi::sensor::GetSensorResponse& resp)
 {
     if (offset > 7)
@@ -680,6 +726,9 @@ inline void setOffset(uint8_t offset, ipmi::sensor::GetSensorResponse& resp)
  * @param[in] offset - offset number.
  * @param[in/out] resp - get sensor reading response.
  */
+/* @brief 设置响应中的 reading 字段。
+ * @param[in] offset - offset 编号。
+ * @param[in/out] resp - get sensor reading 响应。 */
 inline void setReading(uint8_t value, ipmi::sensor::GetSensorResponse& resp)
 {
     resp.reading = value;
@@ -692,6 +741,10 @@ inline void setReading(uint8_t value, ipmi::sensor::GetSensorResponse& resp)
  * @param[in] value - value to mapped to the assertion byte.
  * @param[in/out] resp - get sensor reading response.
  */
+/* @brief 将值映射到 assertion 字节。assertion 状态存放在
+ *        2 个字节中。
+ * @param[in] value - 要映射到 assertion 字节的值。
+ * @param[in/out] resp - get sensor reading 响应。 */
 inline void setAssertionBytes(uint16_t value,
                               ipmi::sensor::GetSensorResponse& resp)
 {
@@ -704,6 +757,8 @@ inline void setAssertionBytes(uint16_t value,
  *
  * @param[in/out] resp - get sensor reading response.
  */
+/* @brief 设置响应中的 scanning enabled 位。
+ * @param[in/out] resp - get sensor reading 响应。 */
 inline void enableScanning(ipmi::sensor::GetSensorResponse& resp)
 {
     resp.readingOrStateUnavailable = false;

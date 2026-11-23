@@ -1,3 +1,10 @@
+
+/**
+ * @file apphandler.cpp
+ * @brief OEM handler 示例模板（演示如何注册 OEM 命令）。
+ */
+/*  @file apphandler.cpp
+ *  @brief OEM handler 示例模板（演示如何注册 OEM 命令）。 */
 #include "config.h"
 
 #include <ipmid/api.hpp>
@@ -51,6 +58,12 @@ namespace fs = std::filesystem;
  * @return On success returns the Version info from primary s/w object.
  *
  */
+/*  @brief 从主 s/w 对象返回版本信息
+ *  从给定的 softwareRoot 路径下、所有实现了
+ *  RedundancyPriority 接口的 s/w 对象中，找出 "Priority" 值最高
+ *  （数值越小优先级越高）且 "Purpose" 为 "BMC" 的
+ *  活跃 s/w 对象，并获取其版本信息。
+ *  @return 成功时返回主 s/w 对象的版本信息。 */
 std::string getActiveSoftwareVersionInfo(ipmi::Context::ptr ctx)
 {
     std::string revision{};
@@ -129,6 +142,7 @@ bool getCurrentBmcStateWithFallback(ipmi::Context::ptr& ctx,
                                     const bool fallbackAvailability)
 {
     // Get the Inventory object implementing the BMC interface
+    // 获取实现 BMC 接口的 Inventory 对象
     ipmi::DbusObjectInfo bmcObject{};
     boost::system::error_code ec =
         ipmi::getDbusObject(ctx, BMCState::interface, bmcObject);
@@ -156,40 +170,59 @@ typedef struct
 } Revision;
 
 /* Use regular expression searching matched pattern X.Y, and convert it to  */
+/* 使用正则表达式搜索匹配的 X.Y 模式，并将其转换为 */
 /* Major (X) and Minor (Y) version.                                         */
 /* Example:                                                                 */
+/* 示例： */
 /* version = 2.14.0-dev                                                     */
+/* version = 2.14.0-dev */
 /*           ^ ^                                                            */
 /*           | |---------------- Minor                                      */
 /*           |------------------ Major                                      */
+/* |------------------ 主版本号 (Major) */
 /*                                                                          */
 /* Default regex string only tries to match Major and Minor version.        */
+/* 默认的 regex 字符串只尝试匹配主版本号和次版本号。 */
 /*                                                                          */
 /* To match more firmware version info, platforms need to define it own     */
+/* 要匹配更多固件版本信息，平台需要定义自己的 */
 /* regex string to match more strings, and assign correct mapping index in  */
 /* matches array.                                                           */
+/* matches 数组中指定正确的映射索引。 */
 /*                                                                          */
 /* matches[0]: matched index for major ver                                  */
+/* matches[0]: 主版本号的匹配索引 */
 /* matches[1]: matched index for minor ver                                  */
 /* matches[2]: matched index for aux[0] (set 0 to skip)                     */
+/* matches[2]: aux[0] 的匹配索引（设为 0 表示跳过） */
 /* matches[3]: matched index for aux[1] (set 0 to skip)                     */
 /* matches[4]: matched index for aux[2] (set 0 to skip)                     */
+/* matches[4]: aux[2] 的匹配索引（设为 0 表示跳过） */
 /* matches[5]: matched index for aux[3] (set 0 to skip)                     */
 /* Example:                                                                 */
+/* 示例： */
 /* regex = "([\d]+).([\d]+).([\d]+)-dev-([\d]+)-g([0-9a-fA-F]{2})           */
+/* regex = "([\d]+).([\d]+).([\d]+)-dev-([\d]+)-g([0-9a-fA-F]{2}) */
 /*          ([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})"               */
+/* ([0-9a-fA-F]{2})([0-9a-fA-F]{2})([0-9a-fA-F]{2})" */
 /* matches = {1,2,5,6,7,8}                                                  */
+/* matches = {1,2,5,6,7,8} */
 /* version = 2.14.0-dev-750-g37a7c5ad1-dirty                                */
+/* version = 2.14.0-dev-750-g37a7c5ad1-dirty */
 /*           ^ ^  ^     ^    ^ ^ ^ ^                                        */
 /*           | |  |     |    | | | |                                        */
 /*           | |  |     |    | | | |-- Aux byte 3 (0xAD), index 8           */
 /*           | |  |     |    | | |---- Aux byte 2 (0xC5), index 7           */
+/* | |  |     |    | | |---- 辅助字节 2 (0xC5)，索引 7 */
 /*           | |  |     |    | |------ Aux byte 1 (0xA7), index 6           */
 /*           | |  |     |    |-------- Aux byte 0 (0x37), index 5           */
+/* | |  |     |    |-------- 辅助字节 0 (0x37)，索引 5 */
 /*           | |  |     |------------- Not used, index 4                    */
 /*           | |  |------------------- Not used, index 3                    */
+/* | |  |------------------- 未使用，索引 3 */
 /*           | |---------------------- Minor (14), index 2                  */
 /*           |------------------------ Major (2), index 1                   */
+/* |------------------------ 主版本号 (2)，索引 1 */
 int convertVersion(std::string s, Revision& rev)
 {
     static const std::vector<size_t> matches = {
@@ -208,6 +241,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert major
+        // 转换主版本号
         {
             std::string str = m[matches[0]].str();
             const auto& [ptr, ec] =
@@ -222,6 +256,9 @@ int convertVersion(std::string s, Revision& rev)
               // have major version between 0 - 99. If the major version is
               // greater than or equal to 2000, it is treated as a year and
               // converted to 0 - 99.
+              // 主版本号取值范围为 0 - 99。如果主版本号
+              // 大于或等于 2000，则将其视为年份并
+              // 转换为 0 - 99。
                 r.major = val % 100;
             }
             else
@@ -231,6 +268,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert minor
+        // 转换次版本号
         {
             std::string str = m[matches[1]].str();
             const auto& [ptr, ec] =
@@ -243,6 +281,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // convert aux bytes
+        // 转换辅助字节
         {
             size_t i;
             for (i = 0; i < 4; i++)
@@ -271,6 +310,7 @@ int convertVersion(std::string s, Revision& rev)
         }
 
         // all matched
+        // 全部匹配成功
         rev = r;
         return 0;
     }
@@ -292,6 +332,18 @@ int convertVersion(std::string s, Revision& rev)
  *   - product ID (2 bytes)
  *   - AUX info (4 bytes)
  */
+/* @brief: 按照 IPMI 规范实现 Get Device ID IPMI 命令
+ *  @param[in] ctx - 指向 IPMI 上下文结构体的 shared_ptr
+ *  @returns IPMI 完成码以及响应数据
+ *   - Device ID（厂商自定义）
+ *   - Device revision[4 bit]；reserved[3 bit]；SDR support[1 bit]
+ *   - FW revision major[7 bit]（二进制编码）；available[1 bit]
+ *   - FW Revision minor（BCD 编码）
+ *   - IPMI 版本（IPMI 2.0 为 0x02）
+ *   - device support（所支持选项的位域）
+ *   - MFG IANA ID（3 字节）
+ *   - product ID（2 字节）
+ *   - AUX info（4 字节） */
 ipmi::RspType<uint8_t,  // Device ID
               uint8_t,  // Device Revision
               uint8_t,  // Firmware Revision Major
@@ -344,6 +396,12 @@ ipmi::RspType<uint8_t,  // Device ID
             // or self-initialization in progress.
             // The availability may change in run time, so mask here
             // and initialize later.
+            // bit7 标识设备是否可用
+            //  0=正常运行
+            //  1=设备固件、SDR 更新
+            //  或正在自我初始化。
+            //  可用性可能在运行时变化，因此这里先掩码，
+            //  稍后再初始化。
             devId.fw[0] = rev.major & ipmiDevIdFw1Mask;
 
             rev.minor = (rev.minor > 99 ? 99 : rev.minor);
@@ -355,6 +413,7 @@ ipmi::RspType<uint8_t,  // Device ID
     if (!dev_id_initialized)
     {
         // IPMI Spec version 2.0
+        // IPMI 规范 2.0 版本
         devId.ipmiVer = 2;
 
         std::ifstream devIdFile(filename);
@@ -388,9 +447,11 @@ ipmi::RspType<uint8_t,  // Device ID
                 }
 
                 // Set the availability of the BMC.
+                // 设置 BMC 的可用性。
                 defaultActivationSetting = data.value("availability", true);
 
                 // Don't read the file every time if successful
+                // 成功后就不必每次都读取文件
                 dev_id_initialized = true;
             }
             else
@@ -407,6 +468,7 @@ ipmi::RspType<uint8_t,  // Device ID
     }
 
     // Set availability to the actual current BMC state
+    // 将可用性设置为 BMC 当前的实际状态
     devId.fw[0] &= ipmiDevIdFw1Mask;
     if (!getCurrentBmcStateWithFallback(ctx, defaultActivationSetting))
     {
@@ -422,7 +484,10 @@ void registerNetFnAppFunctions()
 {
     // OEM libraries should use ipmi::prioOemBase to override default
     // implementation of IPMI commands that use ipmi::prioOpenBmcBase
+    // OEM 库应使用 ipmi::prioOemBase 来覆盖
+    // 那些使用 ipmi::prioOpenBmcBase 的 IPMI 命令默认实现
 
+    // <Get Device ID>
     // <Get Device ID>
     ipmi::registerHandler(ipmi::prioOemBase, ipmi::netFnApp,
                           ipmi::app::cmdGetDeviceId, ipmi::Privilege::User,

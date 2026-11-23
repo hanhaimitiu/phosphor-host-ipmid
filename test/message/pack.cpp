@@ -13,12 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  Copyright © 2018 Intel Corporation
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License. */
 #include <ipmid/api.hpp>
 #include <ipmid/message.hpp>
 
 #include <gtest/gtest.h>
 
 // TODO: Add testing of Payload response API
+// TODO：增加对 Payload 响应 API 的测试
 
 TEST(PackBasics, Uint8)
 {
@@ -26,8 +37,10 @@ TEST(PackBasics, Uint8)
     uint8_t v = 4;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04};
     ASSERT_EQ(p.raw, k);
 }
@@ -38,8 +51,10 @@ TEST(PackBasics, Uint16)
     uint16_t v = 0x8604;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04, 0x86};
     ASSERT_EQ(p.raw, k);
 }
@@ -50,8 +65,10 @@ TEST(PackBasics, Uint32)
     uint32_t v = 0x02008604;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04, 0x86, 0x00, 0x02};
     ASSERT_EQ(p.raw, k);
 }
@@ -62,8 +79,10 @@ TEST(PackBasics, Uint64)
     uint64_t v = 0x1122334402008604ull;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04, 0x86, 0x00, 0x02, 0x44, 0x33, 0x22, 0x11};
     ASSERT_EQ(p.raw, k);
 }
@@ -74,8 +93,10 @@ TEST(PackBasics, Uint24)
     uint24_t v = 0x112358;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), types::nrFixedBits<decltype(v)> / CHAR_BIT);
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x58, 0x23, 0x11};
     ASSERT_EQ(p.raw, k);
 }
@@ -84,15 +105,19 @@ TEST(PackBasics, Uint3Uint5)
 {
     // individual bytes are packed low-order-bits first
     // v1 will occupy [2:0], v2 will occupy [7:3]
+    // 各字节按低位比特优先打包
+    // v1 将占据 [2:0]，v2 将占据 [7:3]
     ipmi::message::Payload p;
     uint3_t v1 = 0x1;
     uint5_t v2 = 0x19;
     p.pack(v1, v2);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), (types::nrFixedBits<decltype(v1)> +
                          types::nrFixedBits<decltype(v2)>) /
                             CHAR_BIT);
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0xc9};
     ASSERT_EQ(p.raw, k);
 }
@@ -101,13 +126,17 @@ TEST(PackBasics, Boolx8)
 {
     // individual bytes are packed low-order-bits first
     // [v8, v7, v6, v5, v4, v3, v2, v1]
+    // 各字节按低位比特优先打包
+    // [v8, v7, v6, v5, v4, v3, v2, v1]
     ipmi::message::Payload p;
     bool v8 = true, v7 = true, v6 = false, v5 = false;
     bool v4 = true, v3 = false, v2 = false, v1 = true;
     p.pack(v1, v2, v3, v4, v5, v6, v7, v8);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(uint8_t));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0xc9};
     ASSERT_EQ(p.raw, k);
 }
@@ -116,12 +145,16 @@ TEST(PackBasics, Bitset8)
 {
     // individual bytes are packed low-order-bits first
     // a bitset for 8 bits fills the full byte
+    // 各字节按低位比特优先打包
+    // 8 比特的 bitset 会填满整个字节
     ipmi::message::Payload p;
     std::bitset<8> v(0xc9);
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() / CHAR_BIT);
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0xc9};
     ASSERT_EQ(p.raw, k);
 }
@@ -130,13 +163,17 @@ TEST(PackBasics, Bitset3Bitset5)
 {
     // individual bytes are packed low-order-bits first
     // v1 will occupy [2:0], v2 will occupy [7:3]
+    // 各字节按低位比特优先打包
+    // v1 将占据 [2:0]，v2 将占据 [7:3]
     ipmi::message::Payload p;
     std::bitset<3> v1(0x1);
     std::bitset<5> v2(0x19);
     p.pack(v1, v2);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), (v1.size() + v2.size()) / CHAR_BIT);
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0xc9};
     ASSERT_EQ(p.raw, k);
 }
@@ -146,12 +183,17 @@ TEST(PackBasics, Bitset32)
     // individual bytes are packed low-order-bits first
     // v1 will occupy 4 bytes, but in LSByte first order
     // v1[7:0] v1[15:9] v1[23:16] v1[31:24]
+    // 各字节按低位比特优先打包
+    // v1 将占据 4 字节，但按低位字节优先的顺序
+    // v1[7:0] v1[15:9] v1[23:16] v1[31:24]
     ipmi::message::Payload p;
     std::bitset<32> v(0x02008604);
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() / CHAR_BIT);
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04, 0x86, 0x00, 0x02};
     ASSERT_EQ(p.raw, k);
 }
@@ -159,12 +201,15 @@ TEST(PackBasics, Bitset32)
 TEST(PackBasics, Tuple)
 {
     // tuples are the new struct, pack a tuple
+    // tuple 就是新的 struct，打包一个 tuple
     ipmi::message::Payload p;
     auto v = std::make_tuple(static_cast<uint16_t>(0x8604), 'A');
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(uint16_t) + sizeof(char));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x04, 0x86, 0x41};
     ASSERT_EQ(p.raw, k);
 }
@@ -172,12 +217,15 @@ TEST(PackBasics, Tuple)
 TEST(PackBasics, Array4xUint8)
 {
     // an array of bytes will be output verbatim, low-order element first
+    // 字节数组将原样输出，低位元素优先
     ipmi::message::Payload p;
     std::array<uint8_t, 4> v = {{0x02, 0x00, 0x86, 0x04}};
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() * sizeof(v[0]));
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {0x02, 0x00, 0x86, 0x04};
     ASSERT_EQ(p.raw, k);
 }
@@ -190,13 +238,21 @@ TEST(PackBasics, Array4xUint32)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 多字节值数组将按顺序输出，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::message::Payload p;
     std::array<uint32_t, 4> v = {
         {0x11223344, 0x22446688, 0x33557799, 0x12345678}};
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() * sizeof(v[0]));
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34, 0x12};
     ASSERT_EQ(p.raw, k);
@@ -210,13 +266,21 @@ TEST(PackBasics, VectorUint32)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 多字节值 vector 将按顺序输出，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::message::Payload p;
     std::vector<uint32_t> v = {
         {0x11223344, 0x22446688, 0x33557799, 0x12345678}};
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() * sizeof(v[0]));
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34, 0x12};
     ASSERT_EQ(p.raw, k);
@@ -225,12 +289,15 @@ TEST(PackBasics, VectorUint32)
 TEST(PackBasics, VectorUint8)
 {
     // a vector of bytes will be output verbatim, low-order element first
+    // 字节 vector 将原样输出，低位元素优先
     ipmi::message::Payload p;
     std::vector<uint8_t> v = {0x02, 0x00, 0x86, 0x04};
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), v.size() * sizeof(v[0]));
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {0x02, 0x00, 0x86, 0x04};
     ASSERT_EQ(p.raw, k);
 }
@@ -259,12 +326,15 @@ TEST(PackBasics, StringViewUnaligned)
 TEST(PackBasics, OptionalEmpty)
 {
     // an optional will only pack if the value is present
+    // optional 只有在有值时才会打包
     ipmi::message::Payload p;
     std::optional<uint32_t> v;
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), 0);
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {};
     ASSERT_EQ(p.raw, k);
 }
@@ -272,12 +342,15 @@ TEST(PackBasics, OptionalEmpty)
 TEST(PackBasics, OptionalContainsValue)
 {
     // an optional will only pack if the value is present
+    // optional 只有在有值时才会打包
     ipmi::message::Payload p;
     std::optional<uint32_t> v(0x04860002);
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(uint32_t));
     // check that the bytes were correctly packed (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ipmi::SecureBuffer k = {0x02, 0x00, 0x86, 0x04};
     ASSERT_EQ(p.raw, k);
 }
@@ -339,6 +412,11 @@ TEST(PackAdvanced, Uints)
     // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
     // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
     // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
+    // 所有元素将按顺序处理，每个多字节元素
+    // 按低位字节优先处理
+    // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
+    // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
+    // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
     ipmi::message::Payload p;
     uint8_t v1 = 0x02;
     uint16_t v2 = 0x0604;
@@ -346,8 +424,10 @@ TEST(PackAdvanced, Uints)
     uint64_t v4 = 0xccbbaa9988776655ull;
     p.pack(v1, v2, v3, v4);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v1) + sizeof(v2) + sizeof(v3) + sizeof(v4));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x02, 0x04, 0x06, 0x11, 0x22, 0x33, 0x44, 0x55,
                             0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc};
     ASSERT_EQ(p.raw, k);
@@ -360,6 +440,11 @@ TEST(PackAdvanced, TupleInts)
     // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
     // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
     // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
+    // 所有元素将按顺序处理，每个多字节元素
+    // 按低位字节优先处理
+    // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
+    // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
+    // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
     ipmi::message::Payload p;
     uint8_t v1 = 0x02;
     uint16_t v2 = 0x0604;
@@ -368,8 +453,10 @@ TEST(PackAdvanced, TupleInts)
     auto v = std::make_tuple(v1, v2, v3, v4);
     p.pack(v);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(v1) + sizeof(v2) + sizeof(v3) + sizeof(v4));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x02, 0x04, 0x06, 0x11, 0x22, 0x33, 0x44, 0x55,
                             0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc};
     ASSERT_EQ(p.raw, k);
@@ -386,6 +473,7 @@ TEST(PackAdvanced, VariantArray)
     ASSERT_EQ(p.size(), sizeof(data));
 
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {2, 4};
     ASSERT_EQ(p.raw, k);
 }
@@ -399,6 +487,13 @@ TEST(PackAdvanced, BoolsnBitfieldsnFixedIntsOhMy)
     // v3[4:0] will occupy k[0][7:3], v3[6:5] will occupy k[1][1:0]
     // v4 will occupy k[1][2]
     // v5 will occupy k[1][7:3]
+    // 每个元素依次加入，先填充低位比特，
+    // 多字节值则按低位字节优先加入
+    // v1 将占据 k[0][1:0]
+    // v2 将占据 k[0][2]
+    // v3[4:0] 将占据 k[0][7:3]，v3[6:5] 将占据 k[1][1:0]
+    // v4 将占据 k[1][2]
+    // v5 将占据 k[1][7:3]
     ipmi::message::Payload p;
     uint2_t v1 = 2;          // binary 0b10
     bool v2 = true;          // binary 0b1
@@ -406,10 +501,13 @@ TEST(PackAdvanced, BoolsnBitfieldsnFixedIntsOhMy)
     bool v4 = false;         // binary 0b0
     uint5_t v5 = 27;         // binary 0b11011
     // concat binary: 0b1101101110011110 -> 0xdb9e -> 0x9e 0xdb (LSByte first)
+    // 拼接二进制：0b1101101110011110 -> 0xdb9e -> 0x9e 0xdb（低位字节优先）
     p.pack(v1, v2, v3, v4, v5);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(uint16_t));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x9e, 0xdb};
     ASSERT_EQ(p.raw, k);
 }
@@ -429,6 +527,19 @@ TEST(PackAdvanced, UnalignedBitPacking)
     // v6[19:12] will occupy k[5][7:0] v6[27:20] will occupy k[6][7:0]
     // v6[31:28] will occupy k[7][3:0]
     // v7 will occupy k[7][7:4]
+    // 未对齐的多字节值将与其他比特一样打包，
+    // 实际上先累积出一个大值，低位
+    // 比特优先，随后输出一串低位字节值
+    // v1 将占据 k[0][1:0]
+    // v2[5:0] 将占据 k[0][7:2]，v2[7:6] 将占据 k[1][1:0]
+    // v3 将占据 k[1][2]
+    // v4[4:0] 将占据 k[1][7:3]，v4[12:5] 将占据 k[2][7:0]
+    // v4[15:13] 将占据 k[3][2:0]
+    // v5 将占据 k[3][3]
+    // v6[3:0] 将占据 k[3][7:0]，v6[11:4] 将占据 k[4][7:0]
+    // v6[19:12] 将占据 k[5][7:0]，v6[27:20] 将占据 k[6][7:0]
+    // v6[31:28] 将占据 k[7][3:0]
+    // v7 将占据 k[7][7:4]
     ipmi::message::Payload p;
     uint2_t v1 = 2;           // binary 0b10
     uint8_t v2 = 0xa5;        // binary 0b10100101
@@ -440,10 +551,15 @@ TEST(PackAdvanced, UnalignedBitPacking)
     // concat binary:
     //   0b1001110110111100001110111101001111001101001010101101001010010110
     //   -> 0x9dbc3bd3cd2ad296 -> 0x96 0xd2 0x2a 0xcd 0xd3 0x3b 0xbc 0x9d
+    // 拼接二进制：
+    //    0b1001110110111100001110111101001111001101001010101101001010010110
+    //    -> 0x9dbc3bd3cd2ad296 -> 0x96 0xd2 0x2a 0xcd 0xd3 0x3b 0xbc 0x9d
     p.pack(v1, v2, v3, v4, v5, v6, v7);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.size(), sizeof(uint64_t));
     // check that the bytes were correctly packed (LSB first)
+    // 检查字节是否正确打包（低位字节优先）
     ipmi::SecureBuffer k = {0x96, 0xd2, 0x2a, 0xcd, 0xd3, 0x3b, 0xbc, 0x9d};
     ASSERT_EQ(p.raw, k);
 }
@@ -452,6 +568,7 @@ TEST(PackAdvanced, ComplexOptionalTuple)
 {
     constexpr size_t macSize = 6;
     // inspired from a real-world case of Get Session Info
+    // 灵感来自 Get Session Info 的真实案例
     constexpr uint8_t handle = 0x23;       // handle for active session
     constexpr uint8_t maxSessions = 15;    // number of possible active sessions
     constexpr uint8_t currentSessions = 4; // number of current active sessions
@@ -488,10 +605,13 @@ TEST(PackAdvanced, ComplexOptionalTuple)
     ipmi::SecureBuffer k = {
         handle, maxSessions, currentSessions, userID, priv, protocol_channel,
         // ip addr
+        // IP 地址
         0x05, 0x01, 0x01, 0x0a,
         // mac addr
+        // MAC 地址
         0, 0, 0, 0, 0, 0,
         // port
+        // 端口
         0x1f, 0xd8};
     ASSERT_EQ(p.raw, k);
 }

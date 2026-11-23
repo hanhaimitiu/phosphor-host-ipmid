@@ -1,3 +1,10 @@
+
+/**
+ * @file settings.cpp
+ * @brief 对 phosphor-settingsd 的封装（BootMode 等设置对象）。
+ */
+/* @file settings.cpp
+ * @brief 对 phosphor-settingsd 的封装（BootMode 等设置对象）。 */
 #include "settings.hpp"
 
 #include <ipmid/utils.hpp>

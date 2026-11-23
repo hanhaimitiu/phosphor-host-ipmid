@@ -1,4 +1,11 @@
 #pragma once
+
+/**
+ * @file read_fru_data.hpp
+ * @brief FRU 分块读取的声明。
+ */
+/* @file read_fru_data.hpp
+ * @brief FRU 分块读取的声明。 */
 #include "ipmi_fru_info_area.hpp"
 
 #include <sdbusplus/bus.hpp>
@@ -26,6 +33,9 @@ static constexpr auto itemPresentProp = "Present";
  *
  * @return FRU area data as per IPMI specification
  */
+/* @brief 按 IPMI 规范获取 FRU 区数据
+ * @param[in] fruNum FRU ID
+ * @return 符合 IPMI 规范的 FRU 区数据 */
 const FruAreaData& getFruAreaData(const FRUId& fruNum);
 
 /**
@@ -33,6 +43,8 @@ const FruAreaData& getFruAreaData(const FRUId& fruNum);
  *
  * @return negative value on failure
  */
+/* @brief 向 DBUS 注册 PropertyChange 事件的回调处理程序
+ * @return 失败时返回负值 */
 int registerCallbackHandler();
 } // namespace fru
 } // namespace ipmi

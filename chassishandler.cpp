@@ -1,3 +1,10 @@
+
+/**
+ * @file chassishandler.cpp
+ * @brief 机箱（Chassis）IPMI 命令：上电/下电/重启、电源状态查询等。
+ */
+/* @file chassishandler.cpp
+ * @brief 机箱（Chassis）IPMI 命令：上电/下电/重启、电源状态查询等。 */
 #include "config.h"
 
 #include "chassishandler.hpp"
@@ -56,6 +63,7 @@ constexpr size_t sizeVersion = 2;
 constexpr size_t DEFAULT_IDENTIFY_TIME_OUT = 15;
 
 // PetiBoot-Specific
+// PetiBoot 专用
 static constexpr uint8_t netConfInitialBytes[] = {0x80, 0x21, 0x70, 0x62,
                                                   0x21, 0x00, 0x01, 0x06};
 static constexpr uint8_t oemParmStart = 96;
@@ -88,6 +96,8 @@ void registerNetFnChassisFunctions() __attribute__((constructor));
 
 // Host settings in dbus
 // Service name should be referenced by connection name got via object mapper
+// dbus 中的主机设置
+// 服务名应引用通过 object mapper 获取的连接名
 const char* settings_object_name = "/org/openbmc/settings/host0";
 const char* settings_intf_name = "org.freedesktop.DBus.Properties";
 const char* identify_led_object_name =
@@ -105,6 +115,7 @@ static constexpr const char* resetButtonPath =
     "/xyz/openbmc_project/Chassis/Buttons/Reset0";
 
 // Phosphor Host State manager
+// Phosphor 主机状态管理器（Host State manager）
 namespace State = sdbusplus::server::xyz::openbmc_project::state;
 namespace fs = std::filesystem;
 
@@ -196,6 +207,13 @@ int getHostNetworkData(ipmi::message::Payload& payload)
         //  so we can't match with bus name so giving some object specific info
         //  as SETTINGS_MATCH.
         //  Later SETTINGS_MATCH will be replaced with busname.
+        // TODO 可能存在一个接口由多个对象实现的情况，
+        // 为处理这种情况，我们只关心位于
+        // 目标总线名上的那个对象。
+        // 目前 mapper 不提供可读的总线名（只给出 busid），
+        // 因此无法按总线名匹配，暂且通过一些对象专属信息
+        // 作为 SETTINGS_MATCH 来匹配。
+        // 以后 SETTINGS_MATCH 会被总线名取代。
 
         sdbusplus::bus_t bus(ipmid_get_sd_bus_connection());
 
@@ -235,6 +253,11 @@ int getHostNetworkData(ipmi::message::Payload& payload)
         //
         // if mac address is default mac address then
         // don't send blank override.
+        // 此处预期应获得有效数据，
+        // 但也可能得到默认值。
+        // 数据校验由 settings 完成。
+        // 如果 MAC 地址是默认 MAC 地址，则
+        // 不要发送空的 override。
         if ((MACAddress == ipmi::network::DEFAULT_MAC_ADDRESS))
         {
             rc = -1;
@@ -242,6 +265,8 @@ int getHostNetworkData(ipmi::message::Payload& payload)
         }
         // if addr is static then ipaddress,gateway,prefix
         // should not be default one,don't send blank override.
+        // 如果地址是静态的，则 ipaddress、gateway、prefix
+        // 不应为默认值，不要发送空的 override。
         if (isStatic)
         {
             if ((ipAddress == ipmi::network::DEFAULT_ADDRESS) ||
@@ -257,6 +282,8 @@ int getHostNetworkData(ipmi::message::Payload& payload)
 
         // First pack macOffset no of bytes in payload.
         // Latter this PetiBoot-Specific data will be populated.
+        // 先在 payload 中打包 macOffset 数量的字节。
+        // 随后将填充这些 PetiBoot 专用数据。
         std::vector<uint8_t> payloadInitialBytes(macOffset);
         payload.pack(payloadInitialBytes);
 
@@ -285,6 +312,7 @@ int getHostNetworkData(ipmi::message::Payload& payload)
                        : ipmi::network::IPV6_ADDRESS_SIZE_BYTE;
 
         // ipaddress and gateway would be in IPv4 format
+        // ipaddress 和 gateway 采用 IPv4 格式
         std::vector<uint8_t> addrInBinary(addrSize);
         inet_pton(addressFamily, ipAddress.c_str(),
                   reinterpret_cast<void*>(addrInBinary.data()));
@@ -308,6 +336,9 @@ int getHostNetworkData(ipmi::message::Payload& payload)
     // PetiBoot-Specific
     // If success then copy the first 9 bytes to the payload message
     // payload first 2 bytes contain the parameter values. Skip that 2 bytes.
+    // PetiBoot 专用
+    // 若成功，则将前 9 个字节复制到 payload 消息中
+    // payload 前 2 个字节是参数值。跳过这 2 个字节。
     uint8_t skipFirstTwoBytes = 2;
     size_t payloadSize = payload.size();
     uint8_t* configDataStartingAddress = payload.data() + skipFirstTwoBytes;
@@ -350,6 +381,12 @@ int getHostNetworkData(ipmi::message::Payload& payload)
  *  @param[in] addrSize - size of the data which needs to be read from offset.
  *  @returns address in text form.
  */
+/* @brief 将 IPv4 和 IPv6 地址从二进制转换为文本形式。
+ *  @param[in] family - IPv4/IPv6
+ *  @param[in] data - 请求数据指针。
+ *  @param[in] offset - data 中的偏移量。
+ *  @param[in] addrSize - 从 offset 处需要读取的数据大小。
+ *  @returns 文本形式的地址。 */
 
 std::string getAddrStr(uint8_t family, uint8_t* data, uint8_t offset,
                        uint8_t addrSize)
@@ -401,11 +438,14 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
 
     // cookie starts from second byte
     // version starts from sixth byte
+    // cookie 从第二个字节开始
+    // version 从第六个字节开始
 
     try
     {
         do
         {
+            // cookie ==  0x21 0x70 0x62 0x21
             // cookie ==  0x21 0x70 0x62 0x21
             data.trailingOk = true;
             auto msgLen = data.size();
@@ -428,12 +468,14 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
                             (netConfInitialBytes + cookieOffset)))
             {
                 // all cookie == 0
+                // 所有 cookie == 0
                 if (std::all_of(msgPayloadStartingPos + cookieOffset,
                                 msgPayloadStartingPos + cookieOffset +
                                     cookieSize,
                                 [](int i) { return i == 0; }) == true)
                 {
                     // need to zero out the network settings.
+                    // 需要将网络设置清零。
                     break;
                 }
 
@@ -441,6 +483,7 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
                 elog<InternalFailure>();
             }
 
+            // version == 0x00 0x01
             // version == 0x00 0x01
             if (msgLen < versionOffset + sizeVersion)
             {
@@ -492,6 +535,7 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
                 return ipmi::ccReqDataLenInvalid;
             }
             // Get the address size
+            // 获取地址大小
             std::copy(msgPayloadStartingPos + addrSizeOffset,
                       (msgPayloadStartingPos + addrSizeOffset +
                        sizeof(decltype(addrSize))),
@@ -508,6 +552,11 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
             //               sizeof(decltype(prefix)),
             //           &prefix);
             // Workaround compiler misdetecting out of bounds memcpy
+            // std::copy(msgPayloadStartingPos + prefixOffset,
+            //           msgPayloadStartingPos + prefixOffset +
+            //               sizeof(decltype(prefix)),
+            //           &prefix);
+            // 绕过编译器误判 memcpy 越界
             prefix = msgPayloadStartingPos[prefixOffset];
 
             uint8_t gatewayOffset = prefixOffset + sizeof(decltype(prefix));
@@ -537,6 +586,7 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
         } while (0);
 
         // Cookie == 0 or it is a valid cookie
+        // Cookie == 0 或为有效 cookie
         hostNetworkConfig +=
             "ipaddress="s + ipAddress + ",prefix="s + std::to_string(prefix) +
             ",gateway="s + gateway + ",mac="s + mac + ",addressOrigin="s +
@@ -549,6 +599,7 @@ ipmi::Cc setHostNetworkData(ipmi::message::Payload& data)
         auto macObjectInfo = ipmi::getDbusObject(bus, MACAddress::interface,
                                                  SETTINGS_ROOT, SETTINGS_MATCH);
         // set the dbus property
+        // 设置 dbus 属性
         ipmi::setDbusProperty(
             bus, ipObjectInfo.second, ipObjectInfo.first, NetworkIP::interface,
             NetworkIP::property_names::address, std::string(ipAddress));
@@ -610,6 +661,14 @@ uint32_t getPOHCounter()
  *  chassisSMDevAddr       - chassis system management device address
  *  chassisBridgeDevAddr   - chassis bridge device address
  */
+/* @brief 实现 get chassis capabilities（获取机箱能力）命令
+ *  @returns IPMI 完成码及响应数据
+ *  chassisCapFlags        - 机箱能力标志
+ *  chassisFRUInfoDevAddr  - 机箱 FRU 信息设备地址
+ *  chassisSDRDevAddr      - 机箱 SDR 设备地址
+ *  chassisSELDevAddr      - 机箱 SEL 设备地址
+ *  chassisSMDevAddr       - 机箱系统管理设备地址
+ *  chassisBridgeDevAddr   - 机箱桥接设备地址 */
 ipmi::RspType<bool,    // chassis intrusion sensor
               bool,    // chassis Front panel lockout
               bool,    // chassis NMI
@@ -642,6 +701,17 @@ ipmi::RspType<bool,    // chassis intrusion sensor
         //            interfaces).
         // [0] -1b = Chassis provides intrusion (physical security) sensor.
         // set to default value 0x0.
+        // 能力标志
+        // [7..4] - 保留
+        // [3] – 1b = 提供电源联锁（IPM 1.5）
+        // [2] – 1b = 提供诊断中断（FP NMI）
+        // [1] – 1b = 提供“前面板锁定”（表示机箱
+        // 具备
+        //            锁定外部电源控制和复位按钮，或
+        //            锁定前面板接口，和/或检测对这些
+        //            接口的篡改的能力）。
+        // [0] -1b = 机箱提供入侵（物理安全）传感器。
+        // 设置为默认值 0x0。
 
         properties = ipmi::getAllDbusProperties(
             bus, chassisCapObject.second, chassisCapObject.first,
@@ -746,6 +816,16 @@ ipmi::RspType<bool,    // chassis intrusion sensor
  *
  *  @returns IPMI completion code
  */
+/* @brief 实现 set chassis capabilities（设置机箱能力）命令
+ *  @param intrusion        - 机箱入侵检测
+ *  @param fpLockout        - 前面板锁定
+ *  @param reserved1        - 跳过一位
+ *  @param fruDeviceAddr    - 机箱 FRU 信息设备地址
+ *  @param sdrDeviceAddr    - 机箱 SDR 设备地址
+ *  @param selDeviceAddr    - 机箱 SEL 设备地址
+ *  @param smDeviceAddr     - 机箱系统管理设备地址
+ *  @param bridgeDeviceAddr - 机箱桥接设备地址
+ *  @returns IPMI 完成码 */
 ipmi::RspType<> ipmiSetChassisCap(
     bool intrusion, bool fpLockout, uint6_t reserved1,
 
@@ -760,6 +840,7 @@ ipmi::RspType<> ipmiSetChassisCap(
     std::optional<uint8_t> bridgeDeviceAddr)
 {
     // check input data
+    // 检查输入数据
     if (reserved1 != 0)
     {
         lg2::error("Unsupported request parameter");
@@ -870,14 +951,19 @@ ipmi::RspType<> ipmiSetChassisCap(
 //------------------------------------------
 // Calls into Host State Manager Dbus object
 //------------------------------------------
+// ------------------------------------------
+// 调用 Host State Manager 的 D-Bus 对象
+// ------------------------------------------
 int initiateHostStateTransition(ipmi::Context::ptr& ctx,
                                 State::Host::Transition transition)
 {
     // OpenBMC Host State Manager dbus framework
+    // OpenBMC Host State Manager 的 dbus 框架
     const auto hostStatePath =
         std::format("{}/{}", HostState::namespace_path::value, "host0");
 
     // Convert to string equivalent of the passed in transition enum.
+    // 将传入的 transition 枚举转换为对应的字符串。
     auto request =
         sdbusplus::common::xyz::openbmc_project::state::convertForMessage(
             transition);
@@ -908,10 +994,14 @@ int initiateHostStateTransition(ipmi::Context::ptr& ctx,
 //------------------------------------------
 // Calls into Chassis State Manager Dbus object
 //------------------------------------------
+// ------------------------------------------
+// 调用 Chassis State Manager 的 D-Bus 对象
+// ------------------------------------------
 int initiateChassisStateTransition(ipmi::Context::ptr& ctx,
                                    State::Chassis::Transition transition)
 {
     // OpenBMC Chassis State Manager dbus framework
+    // OpenBMC Chassis State Manager 的 dbus 框架
     constexpr auto chassisStatePath = "/xyz/openbmc_project/state/chassis0";
 
     std::string service;
@@ -919,6 +1009,7 @@ int initiateChassisStateTransition(ipmi::Context::ptr& ctx,
         ctx, ChassisState::interface, chassisStatePath, service);
 
     // Convert to string equivalent of the passed in transition enum.
+    // 将传入的 transition 枚举转换为对应的字符串。
     auto request =
         sdbusplus::common::xyz::openbmc_project::state::convertForMessage(
             transition);
@@ -943,6 +1034,9 @@ int initiateChassisStateTransition(ipmi::Context::ptr& ctx,
 //------------------------------------------
 // Trigger an NMI on the host via dbus
 //------------------------------------------
+// ------------------------------------------
+// 通过 dbus 向主机触发 NMI
+// ------------------------------------------
 static int doNmi(ipmi::Context::ptr& ctx)
 {
     ipmi::DbusObjectInfo nmiObj{};
@@ -986,6 +1080,7 @@ static constexpr uint8_t allSupport = 0x01 | 0x02 | 0x04;
 
 /* helper function for Get Chassis Status Command
  */
+/* Get Chassis Status 命令的辅助函数 */
 std::optional<uint2_t> getPowerRestorePolicy()
 {
     uint2_t restorePolicy = 0;
@@ -1025,6 +1120,9 @@ std::optional<uint2_t> getPowerRestorePolicy()
  * helper function for Get Chassis Status Command
  * return - optional value for pgood (no value on error)
  */
+/* getPowerStatus
+ * Get Chassis Status 命令的辅助函数
+ * return - pgood 的可选值（出错时无值） */
 std::optional<bool> getPowerStatus()
 {
     bool powerGood = false;
@@ -1051,6 +1149,7 @@ std::optional<bool> getPowerStatus()
         try
         {
             // FIXME: some legacy modules use the older path; try that next
+            // FIXME: 某些旧模块使用旧路径；接下来尝试该路径
             constexpr const char* legacyPwrCtrlObj =
                 "/org/openbmc/control/power0";
             constexpr const char* legacyPwrCtrlIntf =
@@ -1076,6 +1175,9 @@ std::optional<bool> getPowerStatus()
  * helper function for Get Chassis Status Command
  * return - bool value for ACFail (false on error)
  */
+/* getACFailStatus
+ * Get Chassis Status 命令的辅助函数
+ * return - ACFail 的布尔值（出错时为 false） */
 bool getACFailStatus()
 {
     constexpr const char* powerControlObj =
@@ -1215,6 +1317,9 @@ static std::optional<bool> getChassisIntrusionStatus(ipmi::Context::ptr& ctx)
 //----------------------------------------------------------------------
 // Get Chassis Status commands
 //----------------------------------------------------------------------
+// ----------------------------------------------------------------------
+// Get Chassis Status（获取机箱状态）命令
+// ----------------------------------------------------------------------
 ipmi::RspType<bool,    // Power is on
               bool,    // Power overload
               bool,    // Interlock
@@ -1259,27 +1364,34 @@ ipmi::RspType<bool,    // Power is on
     }
 
     //  Front Panel Button Capabilities and disable/enable status(Optional)
+    //   前面板按钮能力及禁用/启用状态（可选）
     std::optional<bool> powerButtonReading =
         getButtonDisabled(ctx, powerButtonPath, ChassisButtonsPower::interface);
     // allow disable if the interface is present
+    // 若接口存在则允许禁用
     bool powerButtonDisableAllow = static_cast<bool>(powerButtonReading);
     // default return the button is enabled (not disabled)
+    // 默认返回按钮为启用（未禁用）
     bool powerButtonDisabled = false;
     if (powerButtonDisableAllow)
     {
         // return the real value of the button status, if present
+        // 若存在则返回按钮状态的真实值
         powerButtonDisabled = *powerButtonReading;
     }
 
     std::optional<bool> resetButtonReading =
         getButtonDisabled(ctx, resetButtonPath, ChassisButtonsReset::interface);
     // allow disable if the interface is present
+    // 若接口存在则允许禁用
     bool resetButtonDisableAllow = static_cast<bool>(resetButtonReading);
     // default return the button is enabled (not disabled)
+    // 默认返回按钮为启用（未禁用）
     bool resetButtonDisabled = false;
     if (resetButtonDisableAllow)
     {
         // return the real value of the button status, if present
+        // 若存在则返回按钮状态的真实值
         resetButtonDisabled = *resetButtonReading;
     }
 
@@ -1294,6 +1406,8 @@ ipmi::RspType<bool,    // Power is on
 
     // This response has a lot of hard-coded, unsupported fields
     // They are set to false or 0
+    // 该响应中有很多硬编码的、不受支持的字段
+    // 它们被设置为 false 或 0
     constexpr bool powerOverload = false;
     constexpr bool chassisInterlock = false;
     constexpr bool powerFault = false;
@@ -1306,6 +1420,7 @@ ipmi::RspType<bool,    // Power is on
     constexpr bool driveFault = false;
     constexpr bool coolingFanFault = false;
     // chassisIdentifySupport set because this command is implemented
+    // 由于已实现该命令，故设置 chassisIdentifySupport
     constexpr bool chassisIdentifySupport = true;
     uint2_t chassisIdentifyState = types::enum_cast<uint2_t>(chassisIDState);
     constexpr bool diagButtonDisabled = false;
@@ -1392,6 +1507,9 @@ static IpmiRestartCause restartCauseToIpmiRestartCause(
  * helper function for Get Host restart cause Command
  * return - optional value for RestartCause (no value on error)
  */
+/* getRestartCause
+ * Get Host restart cause 命令的辅助函数
+ * return - RestartCause 的可选值（出错时无值） */
 static std::optional<uint4_t> getRestartCause(ipmi::Context::ptr ctx)
 {
     constexpr const char* restartCausePath = "/xyz/openbmc_project/state/host0";
@@ -1443,6 +1561,9 @@ ipmi::RspType<uint4_t, // Restart Cause
  *
  *  @return  Success or InvalidFieldRequest.
  */
+/* @brief 实现 chassis control（机箱控制）命令
+ *  @param - chassisControl 命令字节
+ *  @return  Success 或 InvalidFieldRequest。 */
 ipmi::RspType<> ipmiChassisControl(ipmi::Context::ptr& ctx,
                                    uint8_t chassisControl)
 {
@@ -1476,6 +1597,11 @@ ipmi::RspType<> ipmiChassisControl(ipmi::Context::ptr& ctx,
              * "Request parameter(s) not supported in this present state."
              * error completion code be returned.
              */
+            /* 如 IPMI 规范第 28.3 章 - Chassis Control Command 所定义：
+             * 建议当选择该动作时若系统电源已关闭（S4/S5），
+             * 则不执行任何动作，并返回 D5
+             * "Request parameter(s) not supported in this present state."
+             * （当前状态不支持所请求的参数）错误完成码。 */
             if (powerState.value() == false)
             {
                 return ipmi::responseCommandNotAvailable();
@@ -1509,9 +1635,13 @@ ipmi::RspType<> ipmiChassisControl(ipmi::Context::ptr& ctx,
  *  @param[in, out] connection - connection to D-Bus object
  *  @return a IPMI return code
  */
+/* @brief 返回指向 enclosure identify LED 对象的 D-Bus 连接字符串
+ *  @param[in, out] connection - 到 D-Bus 对象的连接
+ *  @return IPMI 返回码 */
 std::string getEnclosureIdentifyConnection()
 {
     // lookup enclosure_identify group owner(s) in mapper
+    // 在 mapper 中查找 enclosure_identify 组的所有者
     try
     {
         return ipmi::getService(*getSdBus(), LedGroup::interface,
@@ -1530,6 +1660,9 @@ std::string getEnclosureIdentifyConnection()
  *  @param[in] flag - true to turn on LED, false to turn off
  *  @return a IPMI return code
  */
+/* @brief 打开/关闭 enclosure identify LED
+ *  @param[in] flag - true 表示打开 LED，false 表示关闭
+ *  @return IPMI 返回码 */
 void enclosureIdentifyLed(bool flag)
 {
     using namespace chassis::internal;
@@ -1554,6 +1687,7 @@ void enclosureIdentifyLed(bool flag)
 
 /** @brief Callback method to turn off LED
  */
+/* @brief 关闭 LED 的回调方法 */
 void enclosureIdentifyLedOff()
 {
     try
@@ -1569,6 +1703,7 @@ void enclosureIdentifyLedOff()
 
 /** @brief Create timer to turn on and off the enclosure LED
  */
+/* @brief 创建用于打开和关闭机箱 LED 的定时器 */
 void createIdentifyTimer()
 {
     if (!identifyTimer)
@@ -1588,6 +1723,8 @@ ipmi::RspType<> ipmiChassisIdentify(std::optional<uint8_t> interval,
     {
         // stop the timer if already started;
         // for force identify we should not turn off LED
+        // 如果定时器已启动则停止它；
+        // 对于强制 identify，不应关闭 LED
         identifyTimer->stop();
         try
         {
@@ -1606,6 +1743,7 @@ ipmi::RspType<> ipmiChassisIdentify(std::optional<uint8_t> interval,
             return ipmi::responseSuccess();
         }
         // start the timer
+        // 启动定时器
         auto time = std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::seconds(identifyInterval));
         identifyTimer->start(time);
@@ -1666,6 +1804,10 @@ std::map<Mode::Modes, IpmiValue> modeDbusToIpmi = {
  *  @param[out] source - boot source value
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 boot source 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] source - boot source 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootSource(ipmi::Context::ptr& ctx, Source::Sources& source)
 {
     using namespace chassis::internal;
@@ -1693,6 +1835,10 @@ static ipmi::Cc getBootSource(ipmi::Context::ptr& ctx, Source::Sources& source)
  *  @param[in] source - boot source value
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 boot source 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] source - boot source 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootSource(ipmi::Context::ptr& ctx,
                               const Source::Sources& source)
 {
@@ -1720,6 +1866,10 @@ static ipmi::Cc setBootSource(ipmi::Context::ptr& ctx,
  *  @param[out] mode - boot mode value
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 boot mode 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] mode - boot mode 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootMode(ipmi::Context::ptr& ctx, Mode::Modes& mode)
 {
     using namespace chassis::internal;
@@ -1747,6 +1897,10 @@ static ipmi::Cc getBootMode(ipmi::Context::ptr& ctx, Mode::Modes& mode)
  *  @param[in] mode - boot mode value
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 boot mode 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] mode - boot mode 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootMode(ipmi::Context::ptr& ctx, const Mode::Modes& mode)
 {
     using namespace chassis::internal;
@@ -1773,6 +1927,10 @@ static ipmi::Cc setBootMode(ipmi::Context::ptr& ctx, const Mode::Modes& mode)
  *  @param[out] type - boot type value
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 boot type 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] type - boot type 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootType(ipmi::Context::ptr& ctx, Type::Types& type)
 {
     using namespace chassis::internal;
@@ -1785,6 +1943,10 @@ static ipmi::Cc getBootType(ipmi::Context::ptr& ctx, Type::Types& type)
     // This interface is not relevant for some Host architectures
     // (for example POWER). In this case we don't want IPMI to
     // return an error, but simply return bootType as EFI.
+    // 如果 BootType 接口不存在，不要抛出错误。
+    // 该接口与某些主机架构（例如 POWER）无关。
+    // 此时我们不希望 IPMI 返回错误，
+    // 只需将 bootType 返回为 EFI 即可。
     type = Type::Types::EFI;
     if (!ec)
     {
@@ -1807,6 +1969,10 @@ static ipmi::Cc getBootType(ipmi::Context::ptr& ctx, Type::Types& type)
  *  @param[in] type - boot type value
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 boot type 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] type - boot type 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootType(ipmi::Context::ptr& ctx, const Type::Types& type)
 {
     using namespace chassis::internal;
@@ -1829,6 +1995,10 @@ static ipmi::Cc setBootType(ipmi::Context::ptr& ctx, const Type::Types& type)
     // This interface is not relevant for some Host architectures
     // (for example POWER). In this case we don't want IPMI to
     // return an error, but want to just skip this function.
+    // 如果 BootType 接口不存在，不要抛出错误。
+    // 该接口与某些主机架构（例如 POWER）无关。
+    // 此时我们不希望 IPMI 返回错误，
+    // 而是直接跳过本函数。
     return ipmi::ccSuccess;
 }
 
@@ -1837,6 +2007,10 @@ static ipmi::Cc setBootType(ipmi::Context::ptr& ctx, const Type::Types& type)
  *  @param[out] enable - boot override enable
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 boot override enable 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] enable - boot override enable 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootEnable(ipmi::Context::ptr& ctx, bool& enable)
 {
     using namespace chassis::internal;
@@ -1864,6 +2038,10 @@ static ipmi::Cc getBootEnable(ipmi::Context::ptr& ctx, bool& enable)
  *  @param[in] enable - boot override enable
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 boot override enable 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] enable - boot override enable 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootEnable(ipmi::Context::ptr& ctx, const bool& enable)
 {
     using namespace chassis::internal;
@@ -1890,6 +2068,10 @@ static ipmi::Cc setBootEnable(ipmi::Context::ptr& ctx, const bool& enable)
  *  @param[out] onetime - boot override one-time
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 boot override one-time 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] onetime - boot override one-time 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootOneTime(ipmi::Context::ptr& ctx, bool& onetime)
 {
     using namespace chassis::internal;
@@ -1917,6 +2099,10 @@ static ipmi::Cc getBootOneTime(ipmi::Context::ptr& ctx, bool& onetime)
  *  @param[in] onetime - boot override one-time
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 boot override one-time 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] onetime - boot override one-time 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootOneTime(ipmi::Context::ptr& ctx, const bool& onetime)
 {
     using namespace chassis::internal;
@@ -1943,6 +2129,10 @@ static ipmi::Cc setBootOneTime(ipmi::Context::ptr& ctx, const bool& onetime)
  *  @param[out] value - cmos clear value
  *  @return On failure return IPMI error.
  */
+/* @brief 获取 cmos clear 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[out] value - cmos clear 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc getBootFlagsCMOSClear(ipmi::Context::ptr& ctx, bool& value)
 {
     using namespace chassis::internal;
@@ -1969,6 +2159,10 @@ static ipmi::Cc getBootFlagsCMOSClear(ipmi::Context::ptr& ctx, bool& value)
  *  @param[in] value - cmos clear value
  *  @return On failure return IPMI error.
  */
+/* @brief 设置 cmos clear 的属性值
+ *  @param[in] ctx - 上下文指针
+ *  @param[in] value - cmos clear 值
+ *  @return 失败时返回 IPMI 错误。 */
 static ipmi::Cc setBootFlagsCMOSClear(ipmi::Context::ptr& ctx, const bool value)
 {
     using namespace chassis::internal;
@@ -2016,6 +2210,22 @@ static uint2_t biosVerbosity = 0x0;
  *   parmIndicator - parameter valid/invalid indicator
  *   data          - configuration parameter data
  */
+/* @brief 实现 Get Chassis system boot option（获取机箱系统启动选项）
+ *  @param ctx - 上下文指针
+ *  @param bootOptionParameter   - 启动选项参数选择器
+ *  @param reserved1    - 保留位
+ *  @param setSelector  - 选择给定参数选择器下的特定
+ *                        参数块或参数集；若参数不使用 setSelector
+ *                        则写为 00h
+ *  @param blockSelector- 在一组参数中选择特定的块；
+ *                        若参数不使用 blockSelector 则
+ *                        写为 00h
+ *  @return IPMI 完成码及响应数据
+ *  @return Payload 包含以下参数：
+ *   version             - 参数版本
+ *   bootOptionParameter - 启动选项参数选择器
+ *   parmIndicator - 参数有效/无效指示
+ *   data          - 配置参数数据 */
 ipmi::RspType<ipmi::message::Payload> ipmiChassisGetSysBootOptions(
     ipmi::Context::ptr ctx, uint7_t bootOptionParameter, bool reserved1,
     [[maybe_unused]] uint8_t setSelector,
@@ -2062,6 +2272,8 @@ ipmi::RspType<ipmi::message::Payload> ipmiChassisGetSysBootOptions(
      * Parameter #5 means boot flags. Please refer to 28.13 of ipmi doc.
      * This is the only parameter used by petitboot.
      */
+    /* 参数 #5 表示启动标志。请参阅 ipmi 文档第 28.13 节。
+     * 这是 petitboot 唯一使用的参数。 */
     if (types::enum_cast<BootOptionParameter>(bootOptionParameter) ==
         BootOptionParameter::bootFlags)
     {
@@ -2217,6 +2429,9 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
      * Parameter #5 means boot flags. Please refer to 28.13 of ipmi doc.
      * This is the only parameter used by petitboot.
      */
+    /* 000101
+     * 参数 #5 表示启动标志。请参阅 ipmi 文档第 28.13 节。
+     * 这是 petitboot 唯一使用的参数。 */
 
     if (types::enum_cast<BootOptionParameter>(parameterSelector) ==
         BootOptionParameter::bootFlags)
@@ -2284,6 +2499,10 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
                 // the boot mode D-Bus property to default.
                 // This way the ipmid code can determine which property is not
                 // at the default value
+                // 如果设置的启动设备映射到某个 boot source，则将
+                // boot mode 的 D-Bus 属性重置为默认值。
+                // 这样 ipmid 代码就能判断哪个属性不处于
+                // 默认值。
                 if (sourceItr->second != Source::Sources::Default)
                 {
                     rc = setBootMode(ctx, Mode::Modes::Regular);
@@ -2314,6 +2533,10 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
                 // the boot source D-Bus property to default.
                 // This way the ipmid code can determine which property is not
                 // at the default value
+                // 如果设置的启动设备映射到某个 boot mode，则将
+                // boot source 的 D-Bus 属性重置为默认值。
+                // 这样 ipmid 代码就能判断哪个属性不处于
+                // 默认值。
                 if (modeItr->second != Mode::Modes::Regular)
                 {
                     rc = setBootSource(ctx, Source::Sources::Default);
@@ -2328,6 +2551,7 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
                 (sourceIpmiToDbus.end() == sourceItr))
             {
                 // return error if boot option is not supported
+                // 若不支持该启动选项则返回错误
                 lg2::error(
                     "ipmiChassisSetSysBootOptions: Boot option not supported");
                 return ipmi::responseInvalidFieldRequest();
@@ -2386,6 +2610,7 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
             return ipmi::responseInvalidFieldRequest();
         }
         // store boot flag valid bits clear value
+        // 存储启动标志有效位的清零值
         bootFlagValidBitClr = static_cast<uint8_t>(bootFlagValidClr);
         lg2::info(
             "ipmiChassisSetSysBootOptions: bootFlagValidBits parameter set "
@@ -2434,12 +2659,19 @@ ipmi::RspType<> ipmiChassisSetSysBootOptions(ipmi::Context::ptr ctx,
  *   - minPerCount - Minutes per count
  *   - counterReading - counter reading
  */
+/* @brief 实现 Get POH counter（获取上电小时计数器）命令
+ *  @parameter
+ *   -  无
+ *  @returns IPMI 完成码及响应数据
+ *   - minPerCount - 每次计数对应的分钟数
+ *   - counterReading - 计数器读数 */
 ipmi::RspType<uint8_t, // Minutes per count
               uint32_t // Counter reading
               >
     ipmiGetPOHCounter()
 {
     // sd_bus error
+    // sd_bus 错误
     try
     {
         return ipmi::responseSuccess(static_cast<uint8_t>(poh::minutesPerCount),
@@ -2471,6 +2703,7 @@ ipmi::RspType<uint3_t, // policy support
     if (policy == power_policy::noChange)
     {
         // just return the supported policy
+        // 直接返回所支持的策略
         return ipmi::responseSuccess(power_policy::allSupport, reserved);
     }
 
@@ -2519,11 +2752,13 @@ ipmi::RspType<> ipmiSetFrontPanelButtonEnables(
     using namespace chassis::internal;
 
     // set power button Enabled property
+    // 设置 power button 的 Enabled 属性
     bool success =
         setButtonDisabled(ctx, powerButtonPath, ChassisButtonsPower::interface,
                           disablePowerButton);
 
     // set reset button Enabled property
+    // 设置 reset button 的 Enabled 属性
     success &=
         setButtonDisabled(ctx, resetButtonPath, ChassisButtonsReset::interface,
                           disableResetButton);
@@ -2531,6 +2766,7 @@ ipmi::RspType<> ipmiSetFrontPanelButtonEnables(
     if (!success)
     {
         // not all buttons were successfully set
+        // 并非所有按钮都成功设置
         return ipmi::responseUnspecifiedError();
     }
     return ipmi::responseSuccess();
@@ -2541,59 +2777,70 @@ void registerNetFnChassisFunctions()
     createIdentifyTimer();
 
     // Get Chassis Capabilities
+    // Get Chassis Capabilities（获取机箱能力）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdGetChassisCapabilities,
                           ipmi::Privilege::User, ipmiGetChassisCap);
 
     // Set Front Panel Button Enables
+    // Set Front Panel Button Enables（设置前面板按钮使能）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdSetFrontPanelButtonEnables,
                           ipmi::Privilege::Admin,
                           ipmiSetFrontPanelButtonEnables);
 
     // Set Chassis Capabilities
+    // Set Chassis Capabilities（设置机箱能力）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdSetChassisCapabilities,
                           ipmi::Privilege::User, ipmiSetChassisCap);
 
     // <Get System Boot Options>
+    // <Get System Boot Options（获取系统启动选项）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdGetSystemBootOptions,
                           ipmi::Privilege::Operator,
                           ipmiChassisGetSysBootOptions);
 
     // <Get Chassis Status>
+    // <Get Chassis Status（获取机箱状态）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdGetChassisStatus,
                           ipmi::Privilege::User, ipmiGetChassisStatus);
 
     // <Chassis Get System Restart Cause>
+    // <Chassis Get System Restart Cause（获取系统重启原因）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdGetSystemRestartCause,
                           ipmi::Privilege::User, ipmiGetSystemRestartCause);
 
     // <Chassis Control>
+    // <Chassis Control（机箱控制）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdChassisControl,
                           ipmi::Privilege::Operator, ipmiChassisControl);
 
     // <Chassis Identify>
+    // <Chassis Identify（机箱定位）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdChassisIdentify,
                           ipmi::Privilege::Operator, ipmiChassisIdentify);
 
     // <Set System Boot Options>
+    // <Set System Boot Options（设置系统启动选项）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdSetSystemBootOptions,
                           ipmi::Privilege::Operator,
                           ipmiChassisSetSysBootOptions);
 
     // <Get POH Counter>
+    // <Get POH Counter（获取上电小时计数器）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdGetPohCounter,
                           ipmi::Privilege::User, ipmiGetPOHCounter);
 
     // <Set Power Restore Policy>
+    // <Set Power Restore Policy（设置电源恢复策略）>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnChassis,
                           ipmi::chassis::cmdSetPowerRestorePolicy,
                           ipmi::Privilege::Operator,

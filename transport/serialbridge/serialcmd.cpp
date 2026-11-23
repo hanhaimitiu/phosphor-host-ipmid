@@ -1,3 +1,10 @@
+
+/**
+ * @file serialcmd.cpp
+ * @brief 串口桥命令解析的实现。
+ */
+/*  @file serialcmd.cpp
+ *  @brief 串口桥命令解析的实现。 */
 #include "serialcmd.hpp"
 
 #include <fmt/format.h>
@@ -20,6 +27,7 @@ namespace serialbridge
 /**
  * @brief Table of special characters
  */
+/*  @brief 特殊字符表 */
 static const std::unordered_map<uint8_t, uint8_t> characters = {
     {bmStart, 0xB0},     /* start */
     {bmStop, 0xB5},      /* stop */
@@ -31,6 +39,7 @@ static const std::unordered_map<uint8_t, uint8_t> characters = {
 /**
  * @brief Calculate IPMI checksum
  */
+/*  @brief 计算 IPMI 校验和 */
 uint8_t SerialChannel::calculateChecksum(std::span<uint8_t> data)
 {
     uint8_t checksum;
@@ -39,12 +48,14 @@ uint8_t SerialChannel::calculateChecksum(std::span<uint8_t> data)
     checksum = (~checksum) + 1;
 
     // return checksum
+    // 返回校验和
     return checksum;
 }
 
 /**
  * @brief Return unescaped character for the given one
  */
+/*  @brief 返回给定字符对应的反转义字符 */
 uint8_t SerialChannel::getUnescapedCharacter(uint8_t c)
 {
     auto search =
@@ -62,6 +73,7 @@ uint8_t SerialChannel::getUnescapedCharacter(uint8_t c)
 /**
  * @brief Process IPMI Serial Request State Machine
  */
+/*  @brief 处理 IPMI 串口请求状态机 */
 int SerialChannel::consumeIpmiSerialPacket(
     std::span<uint8_t>& escapedDataBytes,
     std::vector<uint8_t>& unescapedDataBytes)
@@ -86,6 +98,7 @@ int SerialChannel::consumeIpmiSerialPacket(
             if (unescapedCharacter == c)
             {
                 // error, then reset
+                // 出错，然后重置
                 msgState = MsgState::msgIdle;
                 unescapedDataBytes.clear();
                 continue;
@@ -121,6 +134,7 @@ int SerialChannel::consumeIpmiSerialPacket(
 /**
  * @brief Encapsluate response to avoid escape character
  */
+/*  @brief 封装响应以避免转义字符 */
 uint8_t SerialChannel::processEscapedCharacter(std::vector<uint8_t>& buffer,
                                                const std::vector<uint8_t>& data)
 {
@@ -148,6 +162,7 @@ uint8_t SerialChannel::processEscapedCharacter(std::vector<uint8_t>& buffer,
 /**
  * @brief Write function
  */
+/*  @brief 写函数 */
 int SerialChannel::write(stdplus::Fd& uart, uint8_t rsAddr, uint8_t rqAddr,
                          uint8_t seq, sdbusplus::message_t&& m)
 {
@@ -159,6 +174,7 @@ int SerialChannel::write(stdplus::Fd& uart, uint8_t rsAddr, uint8_t rqAddr,
         if (m.is_method_error())
         {
             // Extra copy to workaround lack of `const sd_bus_error` constructor
+            // 额外拷贝一次，以绕开缺少 `const sd_bus_error` 构造函数的问题
             auto error = *m.get_error();
             throw sdbusplus::exception::SdBusError(&error, "ipmid response");
         }
@@ -175,26 +191,31 @@ int SerialChannel::write(stdplus::Fd& uart, uint8_t rsAddr, uint8_t rqAddr,
         std::vector<uint8_t> messageHeader = {rsAddr, seqLun, cmd, cc};
 
         // Reserve the buffer size to avoid relloc and copy
+        // 预留缓冲区大小，避免重新分配和拷贝
         responseBuffer.clear();
         responseBuffer.reserve(
             sizeof(struct IpmiSerialHeader) + 2 * data.size() +
             4); // 4 for bmStart & bmStop & 2 checksums
 
         // bmStart
+        // bmStart
         responseBuffer.push_back(bmStart);
 
         // Assemble connection header and checksum
+        // 组装连接头和校验和
         checksum = processEscapedCharacter(responseBuffer, connectionHeader);
         checksum = static_cast<uint8_t>(~checksum + 1); // checksum1
         processEscapedCharacter(responseBuffer, std::vector<uint8_t>{checksum});
 
         // Assemble response message and checksum
+        // 组装响应消息和校验和
         checksum = processEscapedCharacter(responseBuffer, messageHeader);
         checksum +=
             processEscapedCharacter(responseBuffer, std::vector<uint8_t>(data));
         checksum = static_cast<uint8_t>(~checksum + 1); // checksum2
         processEscapedCharacter(responseBuffer, std::vector<uint8_t>{checksum});
 
+        // bmStop
         // bmStop
         responseBuffer.push_back(bmStop);
 
@@ -231,6 +252,7 @@ int SerialChannel::write(stdplus::Fd& uart, uint8_t rsAddr, uint8_t rqAddr,
 /**
  * @brief Read function
  */
+/*  @brief 读函数 */
 void SerialChannel::read(stdplus::Fd& uart, sdbusplus::bus_t& bus,
                          sdbusplus::slot& outstanding)
 {
@@ -249,6 +271,7 @@ void SerialChannel::read(stdplus::Fd& uart, sdbusplus::bus_t& bus,
     }
 
     // process ipmi serial packet
+    // 处理 ipmi 串口报文
     if (!consumeIpmiSerialPacket(ipmiSerialPacket, requestBuffer))
     {
         lg2::info("Wait for more data ... \n");
@@ -256,6 +279,7 @@ void SerialChannel::read(stdplus::Fd& uart, sdbusplus::bus_t& bus,
     }
 
     // validate ipmi serial packet length
+    // 校验 ipmi 串口报文长度
     if (requestBuffer.size() <
         (sizeof(struct IpmiSerialHeader) + ipmiSerialChecksumSize))
     {
@@ -265,6 +289,7 @@ void SerialChannel::read(stdplus::Fd& uart, sdbusplus::bus_t& bus,
     }
 
     // validate checksum1
+    // 校验 checksum1
     if (calculateChecksum(std::span<uint8_t>(requestBuffer.begin(),
                                              ipmiSerialConnectionHeaderLength)))
     {
@@ -274,6 +299,7 @@ void SerialChannel::read(stdplus::Fd& uart, sdbusplus::bus_t& bus,
     }
 
     // validate checksum2
+    // 校验 checksum2
     if (calculateChecksum(std::span<uint8_t>(
             &requestBuffer[ipmiSerialConnectionHeaderLength],
             requestBuffer.size() - ipmiSerialConnectionHeaderLength)))

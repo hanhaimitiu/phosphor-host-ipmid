@@ -1,3 +1,10 @@
+
+/**
+ * @file unpack.hpp
+ * @brief 从 IPMI payload 解包 C++ 参数的实现。
+ */
+/*  @file unpack.hpp
+ *  @brief 从 IPMI payload 解包 C++ 参数的实现。 */
 /**
  * Copyright © 2018 Intel Corporation
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  版权所有 © 2018 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 
 #include <ipmid/message.hpp>
@@ -37,6 +54,7 @@ namespace details
 /**************************************
  * ipmi return type helpers
  **************************************/
+/* ipmi 返回类型辅助函数 */
 
 template <typename NumericType, size_t byteIndex = 0>
 void UnpackBytes(uint8_t* pointer, NumericType& i)
@@ -67,6 +85,11 @@ void UnpackBytesUnaligned(Payload& p, NumericType& i)
  *
  *  @tparam T - Type of element to unpack.
  */
+/* @struct UnpackSingle
+ * @brief 从 Payload 解包单个 C++ 元素的实用工具
+ * 用户定义类型应特化该模板
+ * 以实现其功能。
+ * @tparam T - 要解包的元素类型。 */
 template <typename T>
 struct UnpackSingle
 {
@@ -75,6 +98,9 @@ struct UnpackSingle
      *  @param[in] p - Payload to unpack from.
      *  @param[out] t - The reference to unpack item into.
      */
+    /* @brief 执行解包元素的操作。
+     *  @param[in] p - 要从中解包的 Payload。
+     *  @param[out] t - 要解包入的项的引用。 */
     static int op(Payload& p, T& t)
     {
         if constexpr (std::is_fundamental<T>::value)
@@ -91,6 +117,7 @@ struct UnpackSingle
             else
             {
                 // copy out bits from vector....
+                // 把位从 vector 中复制出来……
                 if (p.raw.size() < (p.rawIndex + sizeof(t)))
                 {
                     return 1;
@@ -107,6 +134,7 @@ struct UnpackSingle
             bool priorError = p.unpackError;
             size_t priorIndex = p.rawIndex;
             // more stuff to unroll if partial bytes are out
+            // 若还有不完整的字节，需要展开更多内容
             size_t priorBitCount = p.bitCount;
             fixed_uint_t<details::bitStreamSize> priorBits = p.bitStream;
             int ret = p.unpack(t);
@@ -135,18 +163,24 @@ struct UnpackSingle
  *  Specialization to unpack std::string represented as a
  *  UCSD-Pascal style string
  */
+/* @struct UnpackSingle
+ * @brief 从 Payload 解包单个 C++ 元素的实用工具
+ * 特化：解包表示为 UCSD-Pascal 风格字符串的
+ * std::string */
 template <>
 struct UnpackSingle<std::string>
 {
     static int op(Payload& p, std::string& t)
     {
         // pop len first
+        // 先 pop 出长度
         if (p.rawIndex > (p.raw.size() - sizeof(uint8_t)))
         {
             return 1;
         }
         uint8_t len = p.raw[p.rawIndex++];
         // check to see that there are n bytes left
+        // 检查是否还剩 n 个字节
         auto [first, last] = p.pop<char>(len);
         if (first == last)
         {
@@ -160,6 +194,7 @@ struct UnpackSingle<std::string>
 
 /** @brief Specialization of UnpackSingle for fixed_uint_t types
  */
+/* @brief UnpackSingle 对 fixed_uint_t 类型的特化 */
 template <bitcount_t N>
 struct UnpackSingle<fixed_uint_t<N>>
 {
@@ -168,6 +203,7 @@ struct UnpackSingle<fixed_uint_t<N>>
         static_assert(N <= (details::bitStreamSize - CHAR_BIT));
         constexpr size_t count = N;
         // acquire enough bits in the stream to fulfill the Payload
+        // 从流中获取足够的比特以满足 Payload 的需要
         if (p.fillBits(count))
         {
             return -1;
@@ -181,18 +217,21 @@ struct UnpackSingle<fixed_uint_t<N>>
 };
 
 /** @brief Specialization of UnpackSingle for bool. */
+/* @brief UnpackSingle 针对 bool 的特化。 */
 template <>
 struct UnpackSingle<bool>
 {
     static int op(Payload& p, bool& b)
     {
         // acquire enough bits in the stream to fulfill the Payload
+        // 从流中获取足够的比特以满足 Payload 的需要
         if (p.fillBits(1))
         {
             return -1;
         }
         b = static_cast<bool>(p.bitStream & 0x01);
         // clear bits from stream
+        // 从流中清除比特
         p.bitStream >>= 1;
         p.bitCount -= 1;
         return 0;
@@ -201,6 +240,7 @@ struct UnpackSingle<bool>
 
 /** @brief Specialization of UnpackSingle for std::bitset<N>
  */
+/* @brief UnpackSingle 针对 std::bitset<N> 的特化。 */
 template <size_t N>
 struct UnpackSingle<std::bitset<N>>
 {
@@ -209,6 +249,7 @@ struct UnpackSingle<std::bitset<N>>
         static_assert(N <= (details::bitStreamSize - CHAR_BIT));
         size_t count = N;
         // acquire enough bits in the stream to fulfill the Payload
+        // 从流中获取足够的比特以满足 Payload 的需要
         if (p.fillBits(count))
         {
             return -1;
@@ -224,6 +265,7 @@ struct UnpackSingle<std::bitset<N>>
 };
 
 /** @brief Specialization of UnpackSingle for std::optional<T> */
+/* @brief UnpackSingle 针对 std::optional<T> 的特化。 */
 template <typename T>
 struct UnpackSingle<std::optional<T>>
 {
@@ -232,6 +274,7 @@ struct UnpackSingle<std::optional<T>>
         bool priorError = p.unpackError;
         size_t priorIndex = p.rawIndex;
         // more stuff to unroll if partial bytes are out
+        // 如果还有不完整的字节，需要展开更多内容
         size_t priorBitCount = p.bitCount;
         fixed_uint_t<details::bitStreamSize> priorBits = p.bitStream;
         T value;
@@ -253,6 +296,7 @@ struct UnpackSingle<std::optional<T>>
 };
 
 /** @brief Specialization of UnpackSingle for std::array<T, N> */
+/* @brief UnpackSingle 针对 std::array<T, N> 的特化。 */
 template <typename T, size_t N>
 struct UnpackSingle<std::array<T, N>>
 {
@@ -275,6 +319,7 @@ struct UnpackSingle<std::array<T, N>>
 };
 
 /** @brief Specialization of UnpackSingle for std::array<uint8_t> */
+/* @brief UnpackSingle 针对 std::array<uint8_t> 的特化。 */
 template <size_t N>
 struct UnpackSingle<std::array<uint8_t, N>>
 {
@@ -286,6 +331,7 @@ struct UnpackSingle<std::array<uint8_t, N>>
             return -1;
         }
         // copy out the bytes
+        // 拷贝出这些字节
         std::copy(p.raw.begin() + p.rawIndex, p.raw.begin() + p.rawIndex + N,
                   t.begin());
         p.rawIndex += N;
@@ -294,6 +340,7 @@ struct UnpackSingle<std::array<uint8_t, N>>
 };
 
 /** @brief Specialization of UnpackSingle for std::vector<T> */
+/* @brief UnpackSingle 针对 std::vector<T> 的特化。 */
 template <typename T>
 struct UnpackSingle<std::vector<T>>
 {
@@ -306,6 +353,7 @@ struct UnpackSingle<std::vector<T>>
             if (nrReqd && nrReqd == unpackIndex)
             {
                 // user requested exactly N items
+                // 用户正好请求了 N 个元素
                 break;
             }
             if (unpackIndex == t.size())
@@ -313,6 +361,7 @@ struct UnpackSingle<std::vector<T>>
                 t.emplace_back();
             }
             // empty T unpack will break out of loop
+            // 空的 T 解包会跳出循环
             const size_t bitsBefore = p.bitCount;
             const size_t indexBefore = p.rawIndex;
 
@@ -332,6 +381,8 @@ struct UnpackSingle<std::vector<T>>
         }
         // if the user requested exactly N, return failure if
         // not exactly N were extracted
+        // 如果用户正好请求了 N 个，若解出的
+        // 数量不正好是 N 个则返回失败
         if (nrReqd && nrReqd != unpackIndex)
         {
             return 1;
@@ -341,11 +392,17 @@ struct UnpackSingle<std::vector<T>>
         // or stuff was not unpacked, but should still return
         // success because an empty vector or a not-fully-unpacked
         // payload is not a failure.
+        // 否则，解包 vector 总是成功的：
+        // 要么内容被成功解出（返回 0）
+        // 要么内容没有被解出，但仍应返回
+        // 成功，因为空 vector 或未完全解包的
+        // payload 都不算失败。
         return 0;
     }
 };
 
 /** @brief Specialization of UnpackSingle for std::vector<uint8_t> */
+/* @brief UnpackSingle 针对 std::vector<uint8_t> 的特化。 */
 template <>
 struct UnpackSingle<std::vector<uint8_t>>
 {
@@ -354,10 +411,14 @@ struct UnpackSingle<std::vector<uint8_t>>
         size_t cpBytes = p.raw.size() - p.rawIndex;
         // check for a request of a specific number of bytes
         // allows for <count>, <count bytes> to be part of the request
+        // 检查是否请求了特定数量的字节
+        // 允许 <count>、<count bytes> 作为请求的一部分
         if (t.size())
         {
             // only failure is when a specific number of bytes was requested
             // but there are not that many bytes remaining in the raw request
+            // 唯一的失败情况是请求了特定数量的字节
+            // 但原始请求中剩余字节不足
             if (cpBytes < t.size())
             {
                 return 1;
@@ -376,12 +437,14 @@ struct UnpackSingle<std::vector<uint8_t>>
 };
 
 /** @brief Specialization of UnpackSingle for SecureBuffer */
+/* @brief UnpackSingle 针对 SecureBuffer 的特化。 */
 template <>
 struct UnpackSingle<SecureBuffer>
 {
     static int op(Payload& p, SecureBuffer& t)
     {
         // copy out the remainder of the message
+        // 拷贝出消息的剩余部分
         t.reserve(p.raw.size() - p.rawIndex);
         t.insert(t.begin(), p.raw.begin() + p.rawIndex, p.raw.end());
         p.rawIndex = p.raw.size();
@@ -390,12 +453,14 @@ struct UnpackSingle<SecureBuffer>
 };
 
 /** @brief Specialization of UnpackSingle for std::span<const uint8_t> */
+/* @brief UnpackSingle 针对 std::span<const uint8_t> 的特化。 */
 template <>
 struct UnpackSingle<std::span<const uint8_t>>
 {
     static int op(Payload& p, std::span<const uint8_t>& t)
     {
         // copy out the remainder of the message
+        // 拷贝出消息的剩余部分
         t = std::span<const uint8_t>(p.raw.begin() + p.rawIndex, p.raw.end());
         p.rawIndex = p.raw.size();
         return 0;
@@ -403,6 +468,7 @@ struct UnpackSingle<std::span<const uint8_t>>
 };
 
 /** @brief Specialization of UnpackSingle for Payload */
+/* @brief UnpackSingle 针对 Payload 的特化。 */
 template <>
 struct UnpackSingle<Payload>
 {
@@ -410,6 +476,7 @@ struct UnpackSingle<Payload>
     {
         t = p;
         // mark that this payload is being included in the args
+        // 标记此 payload 正被纳入参数中
         p.trailingOk = true;
         return 0;
     }

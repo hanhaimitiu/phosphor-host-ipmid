@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file dcmihandler.hpp
+ * @brief DCMI 扩展命令的声明。
+ */
+/* @file dcmihandler.hpp
+ * @brief DCMI 扩展命令的声明。 */
+
 #include "nlohmann/json.hpp"
 
 #include <sdbusplus/bus.hpp>
@@ -46,6 +53,9 @@ static constexpr auto gByteBitSize = 8;
  *
  *  @return True if DCMI power management is supported
  */
+/* @brief 检查 DCMI Capabilities 配置文件中是否支持
+ *         DCMI 电源管理。
+ *  @return 若支持 DCMI 电源管理则返回 True */
 bool isDCMIPowerMgmtSupported();
 
 } // namespace dcmi

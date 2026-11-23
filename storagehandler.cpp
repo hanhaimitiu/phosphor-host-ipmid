@@ -1,3 +1,10 @@
+
+/**
+ * @file storagehandler.cpp
+ * @brief legacy 存储命令：FRU/SEL 读写（旧实现，dbus-sdr 为新实现）。
+ */
+/* @file storagehandler.cpp
+ * @brief legacy 存储命令：FRU/SEL 读写（旧实现，dbus-sdr 为新实现）。 */
 #include "config.h"
 
 #include "fruread.hpp"
@@ -210,6 +217,7 @@ void initSELCache()
 /**
  * @enum Device access mode
  */
+/* @enum 设备访问模式 */
 enum class AccessMode
 {
     bytes, ///< Device is accessed by bytes
@@ -225,6 +233,14 @@ enum class AccessMode
  *   - eraseTimeStamp - Most recent erase timestamp
  *   - operationSupport - Reserve & Delete SEL operations supported
  */
+/* @brief 实现 get SEL Info 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - selVersion - SEL 版本
+ *   - entries    - SEL 中的日志条目数。
+ *   - freeSpace  - 可用空间，单位为字节。
+ *   - addTimeStamp - 最近一次添加的时间戳
+ *   - eraseTimeStamp - 最近一次擦除的时间戳
+ *   - operationSupport - 是否支持 Reserve 和 Delete SEL 操作 */
 
 ipmi::RspType<uint8_t,  // SEL revision.
               uint16_t, // number of log entries in SEL.
@@ -243,11 +259,13 @@ ipmi::RspType<uint8_t,  // SEL revision.
 {
     uint16_t entries = 0;
     // Most recent addition timestamp.
+    // 最近一次添加的时间戳。
     uint32_t addTimeStamp = ipmi::sel::invalidTimeStamp;
 
     if (!selCacheMapInitialized)
     {
         // In case the initSELCache() fails, try it again
+        // 如果 initSELCache() 失败，则重试
         initSELCache();
     }
     if (!selCacheMap.empty())
@@ -299,6 +317,7 @@ ipmi::RspType<uint16_t,            // Next Record ID
     if (!selCacheMapInitialized)
     {
         // In case the initSELCache() fails, try it again
+        // 如果 initSELCache() 失败，则重试
         initSELCache();
     }
 
@@ -310,6 +329,7 @@ ipmi::RspType<uint16_t,            // Next Record ID
     SELCacheMap::const_iterator iter;
 
     // Check for the requested SEL Entry.
+    // 检查所请求的 SEL 条目。
     if (selRecordID == ipmi::sel::firstEntry)
     {
         iter = selCacheMap.begin();
@@ -324,6 +344,7 @@ ipmi::RspType<uint16_t,            // Next Record ID
         else
         {
             // Only one entry exists, return the first
+            // 只有一个条目存在，返回第一个
             iter = selCacheMap.begin();
         }
     }
@@ -338,6 +359,7 @@ ipmi::RspType<uint16_t,            // Next Record ID
 
     ipmi::sel::GetSELEntryResponse record{0, iter->second};
     // Identify the next SEL record ID
+    // 确定下一个 SEL record ID
     ++iter;
     if (iter == selCacheMap.end())
     {
@@ -384,6 +406,12 @@ ipmi::RspType<uint16_t,            // Next Record ID
  *  @returns ipmi completion code plus response data
  *   - Record ID of the deleted record
  */
+/* @brief 实现 delete SEL entry 命令
+ * @request
+ *   - reservationID; // 预留 ID。
+ *   - selRecordID;   // SEL record ID。
+ *  @returns IPMI 完成码及响应数据
+ *   - 被删除记录的 Record ID */
 ipmi::RspType<uint16_t // deleted record ID
               >
     deleteSELEntry(uint16_t reservationID, uint16_t selRecordID)
@@ -397,11 +425,14 @@ ipmi::RspType<uint16_t // deleted record ID
 
     // Per the IPMI spec, need to cancel the reservation when a SEL entry is
     // deleted
+    // 根据 IPMI 规范，删除 SEL 条目时需要
+    // 取消预留
     cancelSELReservation();
 
     if (!selCacheMapInitialized)
     {
         // In case the initSELCache() fails, try it again
+        // 如果 initSELCache() 失败，则重试
         initSELCache();
     }
 
@@ -469,6 +500,13 @@ ipmi::RspType<uint16_t // deleted record ID
  *  @returns ipmi completion code plus response data
  *   - erase status
  */
+/* @brief 实现 Clear SEL 命令
+ * @request
+ *   - reservationID   // 预留 ID。
+ *   - clr             // 字符数组 { 'C'(0x43h), 'L'(0x4Ch), 'R'(0x52h) }
+ *   - eraseOperation; // 请求的操作。
+ *  @returns IPMI 完成码及响应数据
+ *   - 擦除状态 */
 
 ipmi::RspType<uint8_t // erase status
               >
@@ -490,6 +528,8 @@ ipmi::RspType<uint8_t // erase status
      * Erasure status cannot be fetched from DBUS, so always return erasure
      * status as `erase completed`.
      */
+    /* 无法从 DBUS 获取擦除状态，因此始终返回擦除
+     * 状态为 `erase completed`。 */
     if (eraseOperation == ipmi::sel::getEraseStatus)
     {
         return ipmi::responseSuccess(
@@ -497,12 +537,14 @@ ipmi::RspType<uint8_t // erase status
     }
 
     // Check that initiate erase is correct
+    // 检查启动擦除是否正确
     if (eraseOperation != ipmi::sel::initiateErase)
     {
         return ipmi::responseInvalidFieldRequest();
     }
 
     // Per the IPMI spec, need to cancel any reservation when the SEL is cleared
+    // 根据 IPMI 规范，清除 SEL 时需要取消所有预留
     cancelSELReservation();
 
     sdbusplus::bus_t bus{ipmid_get_sd_bus_connection()};
@@ -528,6 +570,9 @@ ipmi::RspType<uint8_t // erase status
  *  @returns IPMI completion code plus response data
  *   -current time
  */
+/* @brief 实现 get SEL time 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - 当前时间 */
 ipmi::RspType<uint32_t> // current time
     ipmiStorageGetSelTime()
 {
@@ -560,6 +605,9 @@ ipmi::RspType<uint32_t> // current time
     // Time is really long int but IPMI wants just uint32. This works okay until
     // the number of seconds since 1970 overflows uint32 size.. Still a whole
     // lot of time here to even think about that.
+    // 时间实际是 long int，但 IPMI 只需要 uint32。在
+    // 自 1970 年以来的秒数溢出 uint32 之前，这样
+    // 都没问题。距离那时还有很长时间，现在无需考虑。
     return ipmi::responseSuccess(
         duration_cast<seconds>(microseconds(bmc_time_usec)).count());
 }
@@ -569,6 +617,11 @@ ipmi::RspType<uint32_t> // current time
  *        -local time as the number of seconds from 00:00:00, January 1, 1970
  *  @returns IPMI completion code
  */
+/* @brief 实现 set SEL time 命令
+ *  @param selDeviceTime - epoch 时间
+ *        - 本地时间，表示为自 1970 年 1 月 1 日 00:00:00
+ *          起的秒数
+ *  @returns IPMI 完成码 */
 ipmi::RspType<> ipmiStorageSetSelTime(uint32_t selDeviceTime)
 {
     using namespace std::chrono;
@@ -589,6 +642,7 @@ ipmi::RspType<> ipmiStorageSetSelTime(uint32_t selDeviceTime)
         std::variant<uint64_t> value{(uint64_t)usec.count()};
 
         // Set bmc time
+        // 设置 BMC 时间
         auto method = bus.new_method_call(service.c_str(), BMC_TIME_PATH,
                                           DBUS_PROPERTIES, "Set");
 
@@ -613,6 +667,9 @@ ipmi::RspType<> ipmiStorageSetSelTime(uint32_t selDeviceTime)
  *  @returns IPMI completion code plus response data
  *   -current timezone
  */
+/* @brief 实现 get SEL timezone 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - 当前时区 */
 ipmi::RspType<int16_t> ipmiStorageGetSelTimeUtcOffset()
 {
     time_t timep;
@@ -633,6 +690,9 @@ ipmi::RspType<int16_t> ipmiStorageGetSelTimeUtcOffset()
  *  @returns IPMI completion code plus response data
  *   - SEL reservation ID.
  */
+/* @brief 实现 reserve SEL 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - SEL 预留 ID。 */
 ipmi::RspType<uint16_t> ipmiStorageReserveSel()
 {
     return ipmi::responseSuccess(reserveSel());
@@ -656,6 +716,19 @@ ipmi::RspType<uint16_t> ipmiStorageReserveSel()
  *  @returns ipmi completion code plus response data
  *   - RecordID of the Added SEL entry
  */
+/* @brief 实现 Add SEL entry 命令
+ * @request
+ *   - recordID      用于访问 SEL Record 的 ID
+ *   - recordType    Record 类型
+ *   - timeStamp     记录事件的时间。低字节在前
+ *   - generatorID   如果事件由系统软件生成，则为软件 ID
+ *   - evmRev        事件消息格式版本
+ *   - sensorType    生成事件的服务的 sensor 类型代码
+ *   - sensorNumber  生成事件的 sensor 编号
+ *   - eventDir      event dir
+ *   - eventData     event data 字段内容
+ *  @returns IPMI 完成码及响应数据
+ *   - 新增 SEL 条目的 RecordID */
 ipmi::RspType<uint16_t // recordID of the Added SEL entry
               >
     ipmiStorageAddSEL(uint16_t recordID, uint8_t recordType,
@@ -670,6 +743,8 @@ ipmi::RspType<uint16_t // recordID of the Added SEL entry
 #ifdef OPEN_POWER_SUPPORT
     // Hostboot sends SEL with OEM record type 0xDE to indicate that there is
     // a maintenance procedure associated with eSEL record.
+    // Hostboot 发送 OEM record type 0xDE 的 SEL，表示存在
+    // 与 eSEL 记录关联的维护过程。
     static constexpr auto procedureType = 0xDE;
 #endif
     cancelSELReservation();
@@ -698,6 +773,8 @@ ipmi::RspType<uint16_t // recordID of the Added SEL entry
     {
         // In the OEM record type 0xDE, byte 11 in the SEL record indicate the
         // procedure number.
+        // 在 OEM record type 0xDE 中，SEL 记录的第 11 字节表示
+        // 过程编号。
         createProcedureLogEntry(sensorType);
     }
 #endif
@@ -744,6 +821,10 @@ bool isFruPresent(ipmi::Context::ptr& ctx, const std::string& fruPath)
  *   - FRU Inventory area size in bytes,
  *   - access bit
  **/
+/* @brief 实现 get FRU Inventory Area Info 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - FRU Inventory 区域大小，单位为字节，
+ *   - access 位 */
 ipmi::RspType<uint16_t, // FRU Inventory area size in bytes,
               uint8_t   // access size (bytes / words)
               >
@@ -783,6 +864,13 @@ ipmi::RspType<uint16_t, // FRU Inventory area size in bytes,
  * - returnCount - response data count.
  * - data        -  response data
  */
+/* @brief 实现 Read FRU Data 命令
+ * @param fruDeviceId - FRU 设备 ID。FFh = 保留
+ * @param offset      - 要读取的 FRU inventory 偏移量
+ * @param readCount   - 要读取的数量
+ * @return IPMI 完成码及响应数据
+ * - returnCount - 响应数据数量。
+ * - data        - 响应数据 */
 ipmi::RspType<uint8_t,              // count returned
               std::vector<uint8_t>> // FRU data
     ipmiStorageReadFruData(uint8_t fruDeviceId, uint16_t offset,
@@ -810,6 +898,7 @@ ipmi::RspType<uint8_t,              // count returned
         }
 
         // Write the count of response data.
+        // 写入响应数据的数量。
         uint8_t returnCount;
         if ((offset + readCount) <= size)
         {
@@ -847,6 +936,7 @@ ipmi::RspType<uint8_t,  // SDR version
     constexpr uint8_t operationSupport = 0;
 
     // Get SDR count. This returns the total number of SDRs in the device.
+    // 获取 SDR 数量。返回设备中的 SDR 总数。
     const auto& entityRecords =
         ipmi::sensor::EntityInfoMapContainer::getContainer()
             ->getIpmiEntityRecords();
@@ -864,15 +954,19 @@ void registerNetFnStorageFunctions()
     initSELCache();
     // Handlers with dbus-sdr handler implementation.
     // Do not register the handler if it dynamic sensors stack is used.
+    // 采用 dbus-sdr 实现的处理程序。
+    // 如果使用动态 sensor 栈，则不要注册该处理程序。
 
 #ifndef FEATURE_DYNAMIC_SENSORS
 
 #ifndef FEATURE_DYNAMIC_STORAGES_ONLY
     // <Get SEL Info>
+    // <Get SEL Info>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelInfo, ipmi::Privilege::User,
                           ipmiStorageGetSelInfo);
 
+    // <Get SEL Timezone>
     // <Get SEL Timezone>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelTimeUtcOffset,
@@ -880,30 +974,36 @@ void registerNetFnStorageFunctions()
                           ipmiStorageGetSelTimeUtcOffset);
 
     // <Get SEL Entry>
+    // <Get SEL Entry>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelEntry, ipmi::Privilege::User,
                           getSELEntry);
 
+    // <Delete SEL Entry>
     // <Delete SEL Entry>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdDeleteSelEntry,
                           ipmi::Privilege::Operator, deleteSELEntry);
 
     // <Add SEL Entry>
+    // <Add SEL Entry>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdAddSelEntry,
                           ipmi::Privilege::Operator, ipmiStorageAddSEL);
 
+    // <Clear SEL>
     // <Clear SEL>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdClearSel, ipmi::Privilege::Operator,
                           clearSEL);
 
     // <Get FRU Inventory Area Info>
+    // <Get FRU Inventory Area Info>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetFruInventoryAreaInfo,
                           ipmi::Privilege::User, ipmiStorageGetFruInvAreaInfo);
 
+    // <READ FRU Data>
     // <READ FRU Data>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdReadFruData,
@@ -912,15 +1012,18 @@ void registerNetFnStorageFunctions()
 #endif // FEATURE_DYNAMIC_STORAGES_ONLY
 
     // <Get Repository Info>
+    // <Get Repository Info>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSdrRepositoryInfo,
                           ipmi::Privilege::User, ipmiGetRepositoryInfo);
 
     // <Reserve SDR Repository>
+    // <Reserve SDR Repository>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdReserveSdrRepository,
                           ipmi::Privilege::User, ipmiSensorReserveSdr);
 
+    // <Get SDR>
     // <Get SDR>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSdr, ipmi::Privilege::User,
@@ -929,17 +1032,21 @@ void registerNetFnStorageFunctions()
 #endif
 
     // Common Handlers used by both implementation.
+    // 两种实现共用的处理程序。
 
+    // <Reserve SEL>
     // <Reserve SEL>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdReserveSel, ipmi::Privilege::User,
                           ipmiStorageReserveSel);
 
     // <Get SEL Time>
+    // <Get SEL Time>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelTime, ipmi::Privilege::User,
                           ipmiStorageGetSelTime);
 
+    // <Set SEL Time>
     // <Set SEL Time>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdSetSelTime,

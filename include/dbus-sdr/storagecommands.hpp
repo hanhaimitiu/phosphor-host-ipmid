@@ -1,3 +1,10 @@
+
+/**
+ * @file storagecommands.hpp
+ * @brief 存储 IPMI 命令（D-Bus 后端）的声明。
+ */
+/*  @file storagecommands.hpp
+ *  @brief 存储 IPMI 命令（D-Bus 后端）的声明。 */
 /*
 // Copyright (c) 2017 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/* // 版权所有 (c) 2017 2018 Intel Corporation
+ * //
+ * // 根据 Apache 许可证 2.0 版（"License"）授权；
+ * // 除非符合许可证的规定，否则不得使用本文件。
+ * // 你可以从以下地址获取许可证副本：
+ * //
+ * //      http://www.apache.org/licenses/LICENSE-2.0
+ * //
+ * // 除非适用法律要求或书面同意，否则本软件
+ * // 按"原样"分发，
+ * // 不提供任何明示或暗示的保证或条件。
+ * // 有关许可证下的具体权限和限制，请参阅许可证
+ * // 本身。 */
 
 #pragma once
 #include "sensorhandler.hpp"
@@ -88,6 +108,8 @@ struct Type12Record
     uint8_t deviceCapabilities;
     // define reserved bytes explicitly. The uint24_t is silently expanded to
     // uint32_t, which ruins the byte alignment required by this structure.
+    // 显式定义保留字节。uint24_t 会被静默扩展为
+    // uint32_t，从而破坏该结构所需的字节对齐。
     uint8_t reserved[3];
     uint8_t entityID;
     uint8_t entityInstance;

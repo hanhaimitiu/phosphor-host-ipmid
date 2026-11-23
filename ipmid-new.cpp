@@ -1,3 +1,10 @@
+
+/**
+ * @file ipmid-new.cpp
+ * @brief ipmid 主程序：D-Bus 与 host 之间的 IPMI 命令分发核心。
+ */
+/* @file ipmid-new.cpp
+ * @brief ipmid 主程序：D-Bus 与 host 之间的 IPMI 命令分发核心。 */
 /**
  * Copyright © 2018 Intel Corporation
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* Copyright © 2018 Intel Corporation
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License. */
 #include "config.h"
 
 #include "settings.hpp"
@@ -55,14 +72,14 @@ namespace fs = std::filesystem;
 
 using namespace phosphor::logging;
 
-// IPMI Spec, shared Reservation ID.
+// IPMI 规范要求的全局共享 SEL Reservation ID。
 static unsigned short selReservationID = 0xFFFF;
 static bool selReservationValid = false;
 
 unsigned short reserveSel(void)
 {
-    // IPMI spec, Reservation ID, the value simply increases against each
-    // execution of the Reserve SEL command.
+    // 按 IPMI 规范，Reservation ID 每执行一次 Reserve SEL 命令
+    // 就自增一次。
     if (++selReservationID == 0)
     {
         selReservationID = 1;
@@ -105,50 +122,50 @@ static inline unsigned int makeCmdKey(unsigned int cluster, unsigned int cmd)
     return (cluster << 8) | cmd;
 }
 
-using HandlerTuple = std::tuple<int,                        /* prio */
+using HandlerTuple = std::tuple<int,                        /* 优先级 */
                                 Privilege, HandlerBase::ptr /* handler */
                                 >;
 
-/* map to handle standard registered commands */
-static std::unordered_map<unsigned int, /* key is NetFn/Cmd */
+/* 标准 IPMI 命令的注册表 */
+static std::unordered_map<unsigned int, /* key 是 NetFn/Cmd */
                           HandlerTuple>
     handlerMap;
 
-/* special map for decoding Group registered commands (NetFn 2Ch) */
-static std::unordered_map<unsigned int, /* key is Group/Cmd (NetFn is 2Ch) */
+/* Group 扩展命令（NetFn 2Ch）的专用注册表 */
+static std::unordered_map<unsigned int, /* key 是 Group/Cmd（NetFn 为 2Ch） */
                           HandlerTuple>
     groupHandlerMap;
 
-/* special map for decoding OEM registered commands (NetFn 2Eh) */
-static std::unordered_map<unsigned int, /* key is Iana/Cmd (NetFn is 2Eh) */
+/* OEM 命令（NetFn 2Eh）的专用注册表 */
+static std::unordered_map<unsigned int, /* key 是 Iana/Cmd（NetFn 为 2Eh） */
                           HandlerTuple>
     oemHandlerMap;
 
-using FilterTuple = std::tuple<int,            /* prio */
+using FilterTuple = std::tuple<int,            /* 优先级 */
                                FilterBase::ptr /* filter */
                                >;
 
-/* list to hold all registered ipmi command filters */
+/* 保存所有已注册的 IPMI 命令过滤器 */
 static std::forward_list<FilterTuple> filterList;
 
 namespace impl
 {
-/* common function to register all standard IPMI handlers */
+/* 注册所有标准 IPMI handler 的公共函数 */
 bool registerHandler(int prio, NetFn netFn, Cmd cmd, Privilege priv,
                      HandlerBase::ptr handler)
 {
-    // check for valid NetFn: even; 00-0Ch, 30-3Eh
+    // 校验 NetFn 合法性：偶数；范围 00-0Ch、30-3Eh
     if (netFn & 1 || (netFn > netFnTransport && netFn < netFnGroup) ||
         netFn > netFnOemEight)
     {
         return false;
     }
 
-    // create key and value for this handler
+    // 生成该 handler 的 key 与 value
     unsigned int netFnCmd = makeCmdKey(netFn, cmd);
     HandlerTuple item(prio, priv, handler);
 
-    // consult the handler map and look for a match
+    // 查表确认是否可以注册
     auto& mapCmd = handlerMap[netFnCmd];
     if (!std::get<HandlerBase::ptr>(mapCmd) || std::get<int>(mapCmd) <= prio)
     {
@@ -158,15 +175,15 @@ bool registerHandler(int prio, NetFn netFn, Cmd cmd, Privilege priv,
     return false;
 }
 
-/* common function to register all Group IPMI handlers */
+/* 注册所有 Group IPMI handler 的公共函数 */
 bool registerGroupHandler(int prio, Group group, Cmd cmd, Privilege priv,
                           HandlerBase::ptr handler)
 {
-    // create key and value for this handler
+    // 生成该 handler 的 key 与 value
     unsigned int netFnCmd = makeCmdKey(group, cmd);
     HandlerTuple item(prio, priv, handler);
 
-    // consult the handler map and look for a match
+    // 查表确认是否可以注册
     auto& mapCmd = groupHandlerMap[netFnCmd];
     if (!std::get<HandlerBase::ptr>(mapCmd) || std::get<int>(mapCmd) <= prio)
     {
@@ -176,15 +193,15 @@ bool registerGroupHandler(int prio, Group group, Cmd cmd, Privilege priv,
     return false;
 }
 
-/* common function to register all OEM IPMI handlers */
+/* 注册所有 OEM IPMI handler 的公共函数 */
 bool registerOemHandler(int prio, Iana iana, Cmd cmd, Privilege priv,
                         HandlerBase::ptr handler)
 {
-    // create key and value for this handler
+    // 生成该 handler 的 key 与 value
     unsigned int netFnCmd = makeCmdKey(iana, cmd);
     HandlerTuple item(prio, priv, handler);
 
-    // consult the handler map and look for a match
+    // 查表确认是否可以注册
     auto& mapCmd = oemHandlerMap[netFnCmd];
     if (!std::get<HandlerBase::ptr>(mapCmd) || std::get<int>(mapCmd) <= prio)
     {
@@ -201,16 +218,16 @@ bool registerOemHandler(int prio, Iana iana, Cmd cmd, Privilege priv,
     return false;
 }
 
-/* common function to register all IPMI filter handlers */
+/* 注册所有 IPMI 过滤器的公共函数 */
 void registerFilter(int prio, FilterBase::ptr filter)
 {
-    // check for initial placement
+    // 先看是否应放在表头
     if (filterList.empty() || std::get<int>(filterList.front()) < prio)
     {
         filterList.emplace_front(std::make_tuple(prio, filter));
         return;
     }
-    // walk the list and put it in the right place
+    // 遍历链表，插到合适的位置
     auto j = filterList.begin();
     for (auto i = j; i != filterList.end() && std::get<int>(*i) > prio; i++)
     {
@@ -223,9 +240,8 @@ void registerFilter(int prio, FilterBase::ptr filter)
 
 message::Response::ptr filterIpmiCommand(message::Request::ptr request)
 {
-    // pass the command through the filter mechanism
-    // This can be the firmware firewall or any OEM mechanism like
-    // whitelist filtering based on operational mode
+    // 让命令依次通过过滤器链：可以是固件防火墙，
+    // 也可以是按运行模式过滤白名单等 OEM 机制
     for (auto& item : filterList)
     {
         FilterBase::ptr filter = std::get<FilterBase::ptr>(item);
@@ -242,8 +258,8 @@ message::Response::ptr executeIpmiCommandCommon(
     std::unordered_map<unsigned int, HandlerTuple>& handlers,
     unsigned int keyCommon, message::Request::ptr request)
 {
-    // filter the command first; a non-null message::Response::ptr
-    // means that the message has been rejected for some reason
+    // 先过过滤器；返回非空的 message::Response::ptr
+    // 表示消息因某种原因已被拒绝
     message::Response::ptr filterResponse = filterIpmiCommand(request);
 
     Cmd cmd = request->ctx->cmd;
@@ -251,7 +267,7 @@ message::Response::ptr executeIpmiCommandCommon(
     auto cmdIter = handlers.find(key);
     if (cmdIter != handlers.end())
     {
-        // only return the filter response if the command is found
+        // 只有命中命令时才采用过滤器的拒绝结果
         if (filterResponse)
         {
             lg2::debug("request for NetFn/Cmd {NETFN}/{CMD} has been filtered",
@@ -272,6 +288,7 @@ message::Response::ptr executeIpmiCommandCommon(
         if (cmdIter != handlers.end())
         {
             // only return the filter response if the command is found
+            // 仅在找到该命令时才返回过滤响应
             if (filterResponse)
             {
                 lg2::debug(
@@ -293,6 +310,7 @@ message::Response::ptr executeIpmiCommandCommon(
 message::Response::ptr executeIpmiGroupCommand(message::Request::ptr request)
 {
     // look up the group for this request
+    // 查找该请求对应的 group
     uint8_t bytes;
     if (0 != request->payload.unpack(bytes))
     {
@@ -300,6 +318,7 @@ message::Response::ptr executeIpmiGroupCommand(message::Request::ptr request)
     }
     auto group = static_cast<Group>(bytes);
     // Set defining body code
+    // 设置 defining body code
     request->ctx->group = group;
     message::Response::ptr response =
         executeIpmiCommandCommon(groupHandlerMap, group, request);
@@ -312,6 +331,7 @@ message::Response::ptr executeIpmiGroupCommand(message::Request::ptr request)
 message::Response::ptr executeIpmiOemCommand(message::Request::ptr request)
 {
     // look up the iana for this request
+    // 查找该请求对应的 iana
     uint24_t bytes;
     if (0 != request->payload.unpack(bytes))
     {
@@ -363,6 +383,8 @@ std::unordered_map<std::string, uint8_t> uniqueNameToChannelNumber;
 
 // sdbusplus::match_rules::arg0namespace() wants the prefix
 // to match without any trailing '.'
+// sdbusplus::match_rules::arg0namespace() 要求待匹配的
+// 前缀不带结尾的 '.'
 constexpr const char ipmiDbusChannelMatch[] =
     "xyz.openbmc_project.Ipmi.Channel";
 void updateOwners(sdbusplus::asio::connection& conn, const std::string& name)
@@ -377,6 +399,7 @@ void updateOwners(sdbusplus::asio::connection& conn, const std::string& name)
                 return;
             }
             // start after ipmiDbusChannelPrefix (after the '.')
+            // 从 ipmiDbusChannelPrefix 之后开始（'.' 之后）
             std::string chName =
                 name.substr(std::strlen(ipmiDbusChannelMatch) + 1);
             try
@@ -410,6 +433,7 @@ void doListNames(sdbusplus::asio::connection& conn)
                 return;
             }
             // Try to make startup consistent
+            // 尽量使启动过程保持一致
             std::sort(busNames.begin(), busNames.end());
 
             const std::string channelPrefix =
@@ -438,7 +462,7 @@ void nameChangeHandler(sdbusplus::message_t& message)
     {
         if (oldOwner.starts_with(":"))
         {
-            // Connection removed
+            // 连接断开
             auto it = uniqueNameToChannelNumber.find(oldOwner);
             if (it != uniqueNameToChannelNumber.end())
             {
@@ -448,7 +472,7 @@ void nameChangeHandler(sdbusplus::message_t& message)
     }
     if (!newOwner.empty())
     {
-        // start after ipmiDbusChannelMatch (and after the '.')
+        // 取 ipmiDbusChannelMatch 之后（'.' 之后）的通道名
         std::string chName = name.substr(std::strlen(ipmiDbusChannelMatch) + 1);
         try
         {
@@ -470,14 +494,14 @@ void nameChangeHandler(sdbusplus::message_t& message)
 static constexpr const char intraBmcName[] = "INTRABMC";
 uint8_t channelFromMessage(sdbusplus::message_t& msg)
 {
-    // channel name for ipmitool to resolve to
+    // 返回 ipmitool 可解析的通道名
     std::string sender = msg.get_sender();
     auto chIter = uniqueNameToChannelNumber.find(sender);
     if (chIter != uniqueNameToChannelNumber.end())
     {
         return chIter->second;
     }
-    // FIXME: currently internal connections are ephemeral and hard to pin down
+    // FIXME: 当前 BMC 内部连接是临时的，很难准确归类
     try
     {
         return getChannelByName(intraBmcName);
@@ -488,7 +512,7 @@ uint8_t channelFromMessage(sdbusplus::message_t& msg)
     }
 } // namespace ipmi
 
-/* called from sdbus async server context */
+/* 由 sdbus 异步服务端上下文调用：IPMI 请求的执行入口 */
 auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
                     NetFn netFn, uint8_t lun, Cmd cmd, ipmi::SecureBuffer& data,
                     std::map<std::string, ipmi::Value>& options)
@@ -503,14 +527,14 @@ auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
     Privilege privilege = Privilege::None;
     int rqSA = 0;
     int hostIdx = 0;
-    uint8_t userId = 0; // undefined user
+    uint8_t userId = 0; // 未定义的用户
     uint32_t sessionId = 0;
 
-    // figure out what channel the request came in on
+    // 判断请求来自哪个通道
     uint8_t channel = channelFromMessage(m);
     if (channel == invalidChannel)
     {
-        // unknown sender channel; refuse to service the request
+        // 发送方通道未知：拒绝服务该请求
         lg2::error("ERROR determining source IPMI channel from "
                    "{SENDER} NetFn/Cmd {NETFN}/{CMD}",
                    "SENDER", sender, "NETFN", lg2::hex, netFn, "CMD", lg2::hex,
@@ -518,8 +542,7 @@ auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
         return dbusResponse(ipmi::ccDestinationUnavailable);
     }
 
-    // session-based channels are required to provide userId, privilege and
-    // sessionId
+    // 基于会话的通道必须提供 userId、privilege 与 sessionId
     if (getChannelSessionSupport(channel) != EChannelSessSupported::none)
     {
         try
@@ -543,11 +566,10 @@ auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
     }
     else
     {
-        // get max privilege for session-less channels
-        // For now, there is not a way to configure this, default to Admin
+        // 无会话通道取最高特权：目前无法配置，默认 Admin
         privilege = Privilege::Admin;
 
-        // ipmb should supply rqSA
+        // IPMB 通道应提供 rqSA（请求方源地址）
         ChannelInfo chInfo;
         getChannelInfo(channel, chInfo);
         if (static_cast<EChannelMediumType>(chInfo.mediumType) ==
@@ -571,7 +593,7 @@ auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
             }
         }
     }
-    // check to see if the requested priv/username is valid
+    // 校验请求的特权/用户是否有效
     lg2::debug("Set up ipmi context: Ch:NetFn/Cmd={CHANNEL}:{NETFN}/{CMD}",
                "SENDER", sender, "NETFN", lg2::hex, netFn, "LUN", lg2::hex, lun,
                "CMD", lg2::hex, cmd, "CHANNEL", channel, "USERID", userId,
@@ -590,12 +612,14 @@ auto executionEntry(boost::asio::yield_context yield, sdbusplus::message_t& m,
 
 /** @struct IpmiProvider
  *
- *  RAII wrapper for dlopen so that dlclose gets called on exit
+ *  dlopen 的 RAII 封装：进程退出时自动 dlclose
  */
+/* @struct IpmiProvider
+ *  dlopen 的 RAII 封装：进程退出时自动 dlclose */
 struct IpmiProvider
 {
   public:
-    /** @brief address of the opened library */
+    /** @brief 已打开库的地址 */
     void* addr;
     std::string name;
 
@@ -605,8 +629,8 @@ struct IpmiProvider
     IpmiProvider(IpmiProvider&&) = delete;
     IpmiProvider& operator=(IpmiProvider&&) = delete;
 
-    /** @brief dlopen a shared object file by path
-     *  @param[in]  filename - path of shared object to open
+    /** @brief 按路径 dlopen 一个动态库
+     *  @param[in]  filename - 动态库路径
      */
     explicit IpmiProvider(const char* fname) : addr(nullptr), name(fname)
     {
@@ -646,10 +670,10 @@ struct IpmiProvider
     }
 };
 
-// Plugin libraries need to contain .so either at the end or in the middle
+// 插件库的文件名必须在末尾或中间包含 .so
 constexpr const char ipmiPluginExtn[] = ".so";
 
-/* return a list of self-closing library handles */
+/* 返回一组自动关闭的库句柄 */
 std::forward_list<IpmiProvider> loadProviders(const fs::path& ipmiLibsPath)
 {
     std::vector<fs::path> libs;
@@ -659,7 +683,7 @@ std::forward_list<IpmiProvider> loadProviders(const fs::path& ipmiLibsPath)
         fs::path fname = libPath.path();
         if (fs::is_symlink(fname, ec) || ec)
         {
-            // it's a symlink or some other error; skip it
+            // 是符号链接或其他错误：跳过
             continue;
         }
         while (fname.has_extension())
@@ -690,12 +714,14 @@ std::forward_list<IpmiProvider> loadProviders(const fs::path& ipmiLibsPath)
 
 #ifdef ALLOW_DEPRECATED_API
 /* legacy registration */
+/* legacy（旧式）注册 */
 void ipmi_register_callback(ipmi_netfn_t netFn, ipmi_cmd_t cmd,
                             ipmi_context_t context, ipmid_callback_t handler,
                             ipmi_cmd_privilege_t priv)
 {
     auto h = ipmi::makeLegacyHandler(handler, context);
     // translate priv from deprecated enum to current
+    // 将 priv 从已弃用的枚举转换为当前的枚举
     ipmi::Privilege realPriv;
     switch (priv)
     {
@@ -721,9 +747,8 @@ void ipmi_register_callback(ipmi_netfn_t netFn, ipmi_cmd_t cmd,
             realPriv = ipmi::Privilege::Admin;
             break;
     }
-    // The original ipmi_register_callback allowed for group OEM handlers
-    // to be registered via this same interface. It just so happened that
-    // all the handlers were part of the DCMI group, so default to that.
+    // 旧版 ipmi_register_callback 也允许通过同一接口注册 Group OEM
+    // handler。当年所有 handler 恰好都属于 DCMI 组，因此默认归入该组。
     if (netFn == ipmi::netFnGroup)
     {
         ipmi::impl::registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
@@ -744,7 +769,7 @@ class LegacyRouter : public oem::Router
   public:
     virtual ~LegacyRouter() {}
 
-    /// Enable message routing to begin.
+    /// 启用消息路由。
     void activate() override {}
 
     void registerHandler(Number oen, ipmi_cmd_t cmd, Handler handler) override
@@ -763,10 +788,10 @@ Router* mutableRouter()
 
 } // namespace oem
 
-/* legacy alternative to executionEntry */
+/* executionEntry 的旧版等价入口（废弃 API） */
 void handleLegacyIpmiCommand(sdbusplus::message_t& m)
 {
-    // make a copy so the next two moves don't wreak havoc on the stack
+    // 先拷贝一份消息，避免后面两次 move 把栈上的数据搞乱
     sdbusplus::message_t b{m};
     boost::asio::spawn(
         *getIoContext(),
@@ -785,7 +810,7 @@ void handleLegacyIpmiCommand(sdbusplus::message_t& m)
             ipmi::message::Response::ptr response =
                 ipmi::executeIpmiCommand(request);
 
-            // Responses in IPMI require a bit set.  So there ya go...
+            // IPMI 应答要求 NetFn 的请求/应答位置位，因此补上最低位
             netFn |= 0x01;
 
             constexpr const char* DBUS_INTF = "org.openbmc.HostIpmi";
@@ -809,7 +834,7 @@ void handleLegacyIpmiCommand(sdbusplus::message_t& m)
 
 #endif /* ALLOW_DEPRECATED_API */
 
-// Calls host command manager to do the right thing for the command
+// 调用 host 命令管理器执行面向 host 的命令
 using CommandHandler = phosphor::host::command::CommandHandler;
 std::unique_ptr<phosphor::host::command::Manager> cmdManager;
 void ipmid_send_cmd_to_host(CommandHandler&& cmd)
@@ -822,14 +847,14 @@ std::unique_ptr<phosphor::host::command::Manager>& ipmid_get_host_cmd_manager()
     return cmdManager;
 }
 
-// These are symbols that are present in libipmid, but not expected
-// to be used except here (or maybe a unit test), so declare them here
+// 以下符号位于 libipmid 中，预期只在本文件（或单元测试）中使用，
+// 因此在这里声明
 extern void setIoContext(std::shared_ptr<boost::asio::io_context>& newIo);
 extern void setSdBus(std::shared_ptr<sdbusplus::asio::connection>& newBus);
 
 int main(int argc, char* argv[])
 {
-    // Connect to system bus
+    // 连接系统总线
     auto io = std::make_shared<boost::asio::io_context>();
     setIoContext(io);
     if (argc > 1 && std::string(argv[1]) == "-session")
@@ -853,29 +878,29 @@ int main(int argc, char* argv[])
     auto sdbusp = std::make_shared<sdbusplus::asio::connection>(*io, bus);
     setSdBus(sdbusp);
 
-    // TODO: Hack to keep the sdEvents running.... Not sure why the sd_event
-    //       queue stops running if we don't have a timer that keeps re-arming
+    // TODO: 保持 sdEvents 运行的权宜之计……不清楚为什么没有定时器
+    //       反复重新武装时 sd_event 队列会停止运行
     sdbusplus::Timer t2([]() { ; });
     t2.start(std::chrono::microseconds(500000), true);
 
-    // TODO: Remove all vestiges of sd_event from phosphor-host-ipmid
-    //       until that is done, add the sd_event wrapper to the io object
+    // TODO: 彻底移除 phosphor-host-ipmid 中残留的 sd_event；
+    //       在此之前先把 sd_event 包装器挂到 io 对象上
     sdbusplus::asio::sd_event_wrapper sdEvents(*io);
 
     cmdManager = std::make_unique<phosphor::host::command::Manager>(*sdbusp);
 
-    // Register all command providers and filters
+    // 注册所有命令提供者（插件库）与过滤器
     std::forward_list<ipmi::IpmiProvider> providers =
         ipmi::loadProviders(HOST_IPMI_LIB_PATH);
 
 #ifdef ALLOW_DEPRECATED_API
-    // listen on deprecated signal interface for kcs/bt commands
+    // 监听废弃的 KCS/BT 命令信号接口
     constexpr const char* FILTER = "type='signal',interface='org.openbmc."
                                    "HostIpmi',member='ReceivedMessage'";
     sdbusplus::match oldIpmiInterface(*sdbusp, FILTER, handleLegacyIpmiCommand);
 #endif /* ALLOW_DEPRECATED_API */
 
-    // set up bus name watching to match channels with bus names
+    // 监视总线名变化，把 IPMI 通道服务名映射到通道号
     sdbusplus::match nameOwnerChanged(
         *sdbusp,
         sdbusplus::match_rules::nameOwnerChanged() +
@@ -884,7 +909,7 @@ int main(int argc, char* argv[])
     ipmi::doListNames(*sdbusp);
 
     int exitCode = 0;
-    // set up boost::asio signal handling
+    // 设置 boost::asio 的信号处理
     std::function<SignalResponse(int)> stopAsioRunLoop = [&io, &exitCode](
                                                              int signalNumber) {
         lg2::info("Received signal {SIGNAL}; quitting", "SIGNAL", signalNumber);
@@ -896,7 +921,7 @@ int main(int argc, char* argv[])
     registerSignalHandler(ipmi::prioOpenBmcBase, SIGTERM, stopAsioRunLoop);
 
     sdbusp->request_name("xyz.openbmc_project.Ipmi.Host");
-    // Add bindings for inbound IPMI requests
+    // 为入站 IPMI 请求注册 D-Bus 方法绑定
     auto server = sdbusplus::asio::object_server(sdbusp);
     auto iface = server.add_interface("/xyz/openbmc_project/Ipmi",
                                       "xyz.openbmc_project.Ipmi.Server");
@@ -905,12 +930,12 @@ int main(int argc, char* argv[])
 
     io->run();
 
-    // destroy all the IPMI handlers so the providers can unload safely
+    // 先销毁所有 IPMI handler，插件库才能安全卸载
     ipmi::handlerMap.clear();
     ipmi::groupHandlerMap.clear();
     ipmi::oemHandlerMap.clear();
     ipmi::filterList.clear();
-    // unload the provider libraries
+    // 卸载插件库
     providers.clear();
 
     std::exit(exitCode);

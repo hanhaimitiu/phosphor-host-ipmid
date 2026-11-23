@@ -1,3 +1,10 @@
+
+/**
+ * @file bootstrap-credentials-oem-cmds.cpp
+ * @brief NVIDIA OEM：引导凭据（bootstrap credentials）命令的实现。
+ */
+/*  @file bootstrap-credentials-oem-cmds.cpp
+ *  @brief NVIDIA OEM：引导凭据（bootstrap credentials）命令的实现。 */
 /*
  * SPDX-FileCopyrightText: Copyright OpenBMC Authors
  * SPDX-License-Identifier: Apache-2.0
@@ -25,6 +32,7 @@ ipmi::RspType<uint8_t, uint8_t> ipmiGetUsbVendorIdProductId(uint8_t type)
     constexpr uint8_t descriptorProductId = 2;
 
     // IPMI OEM USB Linux Gadget info
+    // IPMI OEM USB Linux Gadget 信息
     constexpr uint16_t usbVendorId = 0x0525;
     constexpr uint16_t usbProductId = 0xA4A2;
 
@@ -157,6 +165,11 @@ ipmi::RspType<std::vector<uint8_t>> ipmiGetRedfishServiceUUID()
     // Ex: {00112233-4455-6677-8899-AABBCCDDEEFF}
     // 0x33 0x22 0x11 0x00 0x55 0x44 0x77 0x66 0x88 0x99 0xAA 0xBB 0xCC 0xDD
     // 0xEE 0xFF
+    // 根据 Redfish Host Interface Spec v1.3.0
+    //  Redfish UUID 为 16 字节，应按如下方式表示：
+    //  示例：{00112233-4455-6677-8899-AABBCCDDEEFF}
+    //  0x33 0x22 0x11 0x00 0x55 0x44 0x77 0x66 0x88 0x99 0xAA 0xBB 0xCC 0xDD
+    //  0xEE 0xFF
 
     std::vector<uint8_t> resBuf;
     std::vector<std::string> groups = ipmi::split(rfUuid, '-');

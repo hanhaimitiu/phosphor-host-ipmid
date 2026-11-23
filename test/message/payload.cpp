@@ -13,6 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  Copyright © 2018 Intel Corporation
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License. */
 #define SD_JOURNAL_SUPPRESS_LOCATION
 
 #include <systemd/sd-journal.h>
@@ -75,9 +85,11 @@ TEST(PayloadResponse, AppendDrain)
     ipmi::message::Payload p;
     bool b = true;
     // first pack a lone bit
+    // 先打包一个单独的比特
     p.pack(b);
     p.append(s.data(), s.data() + s.size());
     // append will 'drain' first, padding the lone bit into a full byte
+    // append 会先 'drain'，将单独的比特补齐为一个完整字节
     ASSERT_EQ(s.size() + 1, p.size());
 }
 
@@ -92,14 +104,17 @@ TEST(PayloadResponse, AppendBits)
     ASSERT_EQ(p.bitStream, 0);
     ASSERT_EQ(p.bitCount, 0);
     // appended 8 bits, should be one byte
+    // 追加了 8 比特，应为一个字节
     ASSERT_EQ(p.size(), 1);
     ipmi::SecureBuffer k1 = {0b11100101};
     ASSERT_EQ(p.raw, k1);
     p.appendBits(7, 0b1110111);
     // appended 7 more bits, should still be one byte
+    // 又追加了 7 比特，仍应为一个字节
     ASSERT_EQ(p.size(), 1);
     p.drain();
     // drain forces padding; should be two bytes now
+    // drain 强制补齐；现在应为两个字节
     ASSERT_EQ(p.size(), 2);
     ipmi::SecureBuffer k2 = {0b11100101, 0b01110111};
     ASSERT_EQ(p.raw, k2);
@@ -138,6 +153,7 @@ TEST(PayloadResponse, Drain15BitsWholeBytesOnly)
     p.bitCount = 15;
     p.drain(true);
     // only the first whole byte should have been 'drained' into p.raw
+    // 只有第一个完整字节应被 'drain' 到 p.raw 中
     ASSERT_EQ(p.size(), 1);
     ASSERT_EQ(p.bitCount, 7);
     ASSERT_EQ(p.bitStream, 0b1011010);
@@ -164,13 +180,16 @@ TEST(PayloadRequest, FillBits)
     ASSERT_EQ(p.bitStream, 0xbf);
     ASSERT_EQ(p.bitCount, 8);
     // should still have 5 bits available, no change
+    // 应仍有 5 个可用比特，无变化
     p.fillBits(5);
     ASSERT_FALSE(p.unpackError);
     ASSERT_EQ(p.bitStream, 0xbf);
     ASSERT_EQ(p.bitCount, 8);
     // discard 5 bits (low order)
+    // 丢弃 5 个比特（低位）
     p.popBits(5);
     // should add another byte into the stream (high order)
+    // 应向流中再添加一个字节（高位）
     p.fillBits(5);
     ASSERT_FALSE(p.unpackError);
     ASSERT_EQ(p.bitStream, 0x25);
@@ -234,17 +253,21 @@ TEST(PayloadRequest, FullyUnpacked)
     uint32_t v1;
     p.unpack(v1);
     // still one remaining byte
+    // 还剩一个字节
     ASSERT_FALSE(p.fullyUnpacked());
     p.fillBits(3);
     p.popBits(3);
     // still five remaining bits
+    // 还剩五个比特
     ASSERT_FALSE(p.fullyUnpacked());
     p.fillBits(5);
     p.popBits(5);
     // fully unpacked, should be no errors
+    // 已完全解包，应无错误
     ASSERT_TRUE(p.fullyUnpacked());
     p.fillBits(4);
     // fullyUnpacked fails because an attempt to unpack too many bytes
+    // fullyUnpacked 失败，因为试图解包过多字节
     ASSERT_FALSE(p.fullyUnpacked());
 }
 
@@ -266,26 +289,37 @@ TEST(PayloadRequest, ResetUsage)
     // Payload.reset is used to rewind the unpacking to the initial
     // state. This is needed so that OEM commands can unpack the group
     // number or the IANA to determine which handler needs to be called
+    // Payload.reset 用于将解包回退到初始状态。
+    // OEM 命令需要用它来解出 group number
+    // 或 IANA，以确定该调用哪个处理函数。
     ipmi::SecureBuffer i = {0x04, 0x86};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t v1;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint8_t k1 = 0x04;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     // do a reset on the payload
+    // 对 payload 执行 reset
     p.reset();
     // unpack a uint16
+    // 解包一个 uint16
     uint16_t v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v2), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint16_t k2 = 0x8604;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v2, k2);
 }
 
@@ -296,17 +330,22 @@ TEST(PayloadRequest, PartialPayload)
     uint8_t v1;
     ipmi::message::Payload localPayload;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, localPayload), 0);
     // check that the payload was partially unpacked and not in error
+    // 检查 payload 是否部分解包且无错误
     ASSERT_FALSE(p.fullyUnpacked());
     ASSERT_FALSE(p.unpackError);
     // check that the 'extracted' payload is not fully unpacked
+    // 检查 'extracted' 出来的 payload 未完全解包
     ASSERT_FALSE(localPayload.fullyUnpacked());
     uint8_t k1 = 0xbf;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     uint32_t v2;
     // unpack using the 'extracted' payload
+    // 使用 'extracted' 出来的 payload 进行解包
     ASSERT_EQ(localPayload.unpack(v2), 0);
     ASSERT_TRUE(localPayload.fullyUnpacked());
     uint32_t k2 = 0x02008604;

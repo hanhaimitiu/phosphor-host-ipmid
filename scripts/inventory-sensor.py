@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# @brief 生成 inventory-sensor 配置的脚本。
+
 import argparse
 import os
 import sys

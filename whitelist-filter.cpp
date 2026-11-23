@@ -1,3 +1,10 @@
+
+/**
+ * @file whitelist-filter.cpp
+ * @brief 命令过滤器：按白名单拦截未开放的 IPMI 命令。
+ */
+/*  @file whitelist-filter.cpp
+ *  @brief 命令过滤器：按白名单拦截未开放的 IPMI 命令。 */
 #include <ipmiallowlist.hpp>
 #include <ipmid/api.hpp>
 #include <ipmid/utils.hpp>
@@ -17,6 +24,7 @@ namespace ipmi
 {
 
 // put the filter provider in an unnamed namespace
+// 将过滤器提供者（filter provider）放入匿名命名空间
 namespace
 {
 
@@ -25,6 +33,9 @@ namespace
  * Class that implements an IPMI message filter based
  * on incoming interface and a restriction mode setting
  */
+/* @class AllowlistFilter
+ *  基于传入接口和限制模式设置来实现 IPMI 消息过滤器的
+ *  类。 */
 class AllowlistFilter
 {
   public:
@@ -65,6 +76,7 @@ AllowlistFilter::AllowlistFilter()
                          });
 
     // wait until io->run is going to fetch RestrictionMode
+    // 等待 io->run 开始获取 RestrictionMode
     post_work([this]() { postInit(); });
 }
 
@@ -73,6 +85,10 @@ AllowlistFilter::AllowlistFilter()
  *  @param[in] devices - vector of devices object path
  *  @returns void.
  */
+/* @brief 获取那些支持并启用了 RestrictionMode 的设备的
+ *  RestrictionMode
+ *  @param[in] devices - 设备对象路径的 vector
+ *  @returns void。 */
 
 void AllowlistFilter::cacheRestrictedMode(
     const std::vector<std::string>& devices,
@@ -108,6 +124,7 @@ void AllowlistFilter::cacheRestrictedMode(
         {
             lg2::error("Error in RestrictionMode Get");
             // Fail-safe to true.
+            // 故障安全（Fail-safe）设为 true。
             size_t index = std::distance(&*std::begin(devices), &dev);
             restrictedMode[index] = true;
         }
@@ -128,6 +145,10 @@ void AllowlistFilter::cacheRestrictedMode(
  *  @param[in] deviceList - map to store devices path and their index
  *  @returns void.
  */
+/* @brief 当 RestrictionMode 发生变化时更新它
+ *  @param[in] m - sdbusplus 消息，用于获取更新后模式的 dbus 路径
+ *  @param[in] deviceList - 用于存储设备路径及其索引的 map
+ *  @returns void。 */
 
 void AllowlistFilter::handleRestrictedModeChange(
     sdbusplus::message_t& m, const std::map<std::string, size_t>& deviceList)
@@ -171,6 +192,9 @@ void AllowlistFilter::handleRestrictedModeChange(
  *  @param[in] void
  *  @returns void.
  */
+/* @brief 获取并更新受支持设备的 RestrictionMode
+ *  @param[in] void
+ *  @returns void。 */
 
 void AllowlistFilter::postInit()
 {
@@ -195,8 +219,10 @@ void AllowlistFilter::postInit()
     }
 
     // Initialize restricted mode
+    // 初始化受限模式（restricted mode）
     cacheRestrictedMode(devices, objects->serviceMap);
     // Wait for changes on Restricted mode
+    // 等待 Restricted mode 发生变化
     std::map<std::string, size_t> deviceList;
 
     for (size_t index = 0; index < devices.size(); index++)
@@ -220,12 +246,18 @@ void AllowlistFilter::postInit()
  *  @param[in] request - IPMI message request
  *  @returns IPMI completion code success or error.
  */
+/* @brief 使用 RestrictedMode 过滤 IPMI 消息
+ *  @param[in] request - IPMI 消息请求
+ *  @returns IPMI 完成码：成功或错误。 */
 
 ipmi::Cc AllowlistFilter::filterMessage(ipmi::message::Request::ptr request)
 {
     /* Getting hostIdx for all IPMI devices like hosts, debugcard and other
    devices from ipmi::message::Request and call postInit() to get the
    restriction mode for all the IPMI commands */
+    /* 从 ipmi::message::Request 中获取所有 IPMI 设备（如主机、
+     * 调试卡等）的 hostIdx，并调用 postInit() 为所有 IPMI 命令
+     * 获取限制模式 */
 
     size_t hostIdx = request->ctx->hostIdx;
 
@@ -248,6 +280,7 @@ ipmi::Cc AllowlistFilter::filterMessage(ipmi::message::Request::ptr request)
 }
 
 // instantiate the AllowlistFilter when this shared object is loaded
+// 在加载该共享库时实例化 AllowlistFilter
 AllowlistFilter allowlistFilter;
 
 } // namespace

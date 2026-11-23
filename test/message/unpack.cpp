@@ -13,6 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  Copyright © 2018 Intel Corporation
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License. */
 #include <ipmid/api.hpp>
 #include <ipmid/message.hpp>
 
@@ -24,11 +34,14 @@ TEST(Uints, Uint8)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint8_t k = 0x04;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -38,11 +51,14 @@ TEST(Uints, Uint8TooManyBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint8_t k = 0x04;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -52,10 +68,13 @@ TEST(Uints, Uint8InsufficientBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t v = 0;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
@@ -65,11 +84,14 @@ TEST(Uints, Uint16)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint16_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint16_t k = 0x8604;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -79,11 +101,14 @@ TEST(Uints, Uint16TooManyBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint16_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint16_t k = 0x8604;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -93,10 +118,13 @@ TEST(Uints, Uint16InsufficientBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint16_t v = 0;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
@@ -106,11 +134,14 @@ TEST(Uints, Uint32)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint32_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint32_t k = 0x02008604;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -120,11 +151,14 @@ TEST(Uints, Uint32TooManyBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint32_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint32_t k = 0x02008604;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -134,10 +168,13 @@ TEST(Uints, Uint32InsufficientBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint32_t v = 0;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
@@ -147,11 +184,14 @@ TEST(Uints, Uint64)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint64_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint64_t k = 0x1122334402008604ull;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -162,11 +202,14 @@ TEST(Uints, Uint64TooManyBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint64_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint64_t k = 0x1122334402008604ull;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -176,10 +219,13 @@ TEST(Uints, Uint64InsufficientBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint64_t v = 0;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
@@ -189,11 +235,14 @@ TEST(Uints, Uint24)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint24_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint24_t k = 0x112358;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -203,11 +252,14 @@ TEST(FixedInts, Uint24TooManyBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint24_t v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint24_t k = 0x112358;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -217,10 +269,13 @@ TEST(FixedInts, Uint24InsufficientBytes)
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint24_t v = 0;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
@@ -228,17 +283,22 @@ TEST(FixedInts, Uint3Uint5)
 {
     // individual bytes are unpacked low-order-bits first
     // v1 will use [2:0], v2 will use [7:3]
+    // 各字节按低位比特优先解包
+    // v1 将使用 [2:0]，v2 将使用 [7:3]
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint3_t v1;
     uint5_t v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint3_t k1 = 0x1;
     uint5_t k2 = 0x19;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
 }
@@ -246,17 +306,21 @@ TEST(FixedInts, Uint3Uint5)
 TEST(FixedInts, Uint3Uint4TooManyBits)
 {
     // high order bit should not get unpacked
+    // 高位不应被解包
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint3_t v1;
     uint4_t v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     uint3_t k1 = 0x1;
     uint4_t k2 = 0x9;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
 }
@@ -264,18 +328,23 @@ TEST(FixedInts, Uint3Uint4TooManyBits)
 TEST(FixedInts, Uint3Uint6InsufficientBits)
 {
     // insufficient bits to unpack v2
+    // 比特不足以解包 v2
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint3_t v1;
     uint6_t v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v1, v2), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     uint3_t k1 = 0x1;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     // check that v2 is zero
+    // 检查 v2 是否为零
     ASSERT_EQ(v2, 0);
 }
 
@@ -283,15 +352,20 @@ TEST(Bools, Boolx8)
 {
     // individual bytes are unpacked low-order-bits first
     // [v8, v7, v6, v5, v4, v3, v2, v1]
+    // 各字节按低位比特优先解包
+    // [v8, v7, v6, v5, v4, v3, v2, v1]
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     bool v8, v7, v6, v5;
     bool v4, v3, v2, v1;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2, v3, v4, v5, v6, v7, v8), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     bool k8 = true, k7 = true, k6 = false, k5 = false;
     bool k4 = true, k3 = false, k2 = false, k1 = true;
     ASSERT_EQ(v1, k1);
@@ -309,15 +383,21 @@ TEST(Bools, Boolx8TooManyBits)
     // high order bit should not get unpacked
     // individual bytes are unpacked low-order-bits first
     // [v7, v6, v5, v4, v3, v2, v1]
+    // 高位不应被解包
+    // 各字节按低位比特优先解包
+    // [v7, v6, v5, v4, v3, v2, v1]
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     bool v7, v6, v5;
     bool v4, v3, v2, v1;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2, v3, v4, v5, v6, v7), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     bool k7 = true, k6 = false, k5 = false;
     bool k4 = true, k3 = false, k2 = false, k1 = true;
     ASSERT_EQ(v1, k1);
@@ -333,16 +413,21 @@ TEST(Bools, Boolx8InsufficientBits)
 {
     // individual bytes are unpacked low-order-bits first
     // [v8, v7, v6, v5, v4, v3, v2, v1]
+    // 各字节按低位比特优先解包
+    // [v8, v7, v6, v5, v4, v3, v2, v1]
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     bool v9;
     bool v8, v7, v6, v5;
     bool v4, v3, v2, v1;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v1, v2, v3, v4, v5, v6, v7, v8, v9), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     bool k8 = true, k7 = true, k6 = false, k5 = false;
     bool k4 = true, k3 = false, k2 = false, k1 = true;
     ASSERT_EQ(v1, k1);
@@ -359,15 +444,20 @@ TEST(Bitsets, Bitset8)
 {
     // individual bytes are unpacked low-order-bits first
     // a bitset for 8 bits fills the full byte
+    // 各字节按低位比特优先解包
+    // 8 比特的 bitset 会填满整个字节
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<8> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::bitset<8> k(0xc9);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -375,15 +465,20 @@ TEST(Bitsets, Bitset7TooManyBits)
 {
     // individual bytes are unpacked low-order-bits first
     // a bitset for 8 bits fills the full byte
+    // 各字节按低位比特优先解包
+    // 8 比特的 bitset 会填满整个字节
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<7> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::bitset<7> k(0x49);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -391,15 +486,20 @@ TEST(Bitsets, Bitset9InsufficientBits)
 {
     // individual bytes are unpacked low-order-bits first
     // a bitset for 8 bits fills the full byte
+    // 各字节按低位比特优先解包
+    // 8 比特的 bitset 会填满整个字节
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<9> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     std::bitset<9> k(0);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -407,17 +507,22 @@ TEST(Bitsets, Bitset3Bitset5)
 {
     // individual bytes are unpacked low-order-bits first
     // v1 will use [2:0], v2 will use [7:3]
+    // 各字节按低位比特优先解包
+    // v1 将使用 [2:0]，v2 将使用 [7:3]
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<3> v1;
     std::bitset<5> v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::bitset<3> k1(0x1);
     std::bitset<5> k2(0x19);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
 }
@@ -425,17 +530,21 @@ TEST(Bitsets, Bitset3Bitset5)
 TEST(Bitsets, Bitset3Bitset4TooManyBits)
 {
     // high order bit should not get unpacked
+    // 高位不应被解包
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<3> v1;
     std::bitset<4> v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::bitset<3> k1 = 0x1;
     std::bitset<4> k2 = 0x9;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
 }
@@ -443,18 +552,23 @@ TEST(Bitsets, Bitset3Bitset4TooManyBits)
 TEST(Bitsets, Bitset3Bitset6InsufficientBits)
 {
     // insufficient bits to unpack v2
+    // 比特不足以解包 v2
     ipmi::SecureBuffer i = {0xc9};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<3> v1;
     std::bitset<6> v2;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v1, v2), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     std::bitset<3> k1 = 0x1;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     // check that v2 is zero
+    // 检查 v2 是否为零
     ASSERT_EQ(v2, 0);
 }
 
@@ -463,59 +577,77 @@ TEST(Bitsets, Bitset32)
     // individual bytes are unpacked low-order-bits first
     // v1 will use 4 bytes, but in LSByte first order
     // v1[7:0] v1[15:9] v1[23:16] v1[31:24]
+    // 各字节按低位比特优先解包
+    // v1 将使用 4 字节，但按低位字节优先的顺序
+    // v1[7:0] v1[15:9] v1[23:16] v1[31:24]
     ipmi::SecureBuffer i = {0xb4, 0x86, 0x91, 0xc2};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<32> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::bitset<32> k(0xc29186b4);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
 TEST(Bitsets, Bitset31TooManyBits)
 {
     // high order bit should not get unpacked
+    // 高位不应被解包
     ipmi::SecureBuffer i = {0xb4, 0x86, 0x91, 0xc2};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<31> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::bitset<31> k(0x429186b4);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
 TEST(Bitsets, Bitset33InsufficientBits)
 {
     // insufficient bits to unpack v2
+    // 比特不足以解包 v2
     ipmi::SecureBuffer i = {0xb4, 0x86, 0x91, 0xc2};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::bitset<33> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked (comprehends unpack errors)
+    // 检查 payload 是否未完全解包（包含解包错误的情况）
     ASSERT_FALSE(p.fullyUnpacked());
     // check that v is zero
+    // 检查 v 是否为零
     ASSERT_EQ(v, 0);
 }
 
 TEST(Arrays, Array4xUint8)
 {
     // an array of bytes will be read verbatim, low-order element first
+    // 字节数组将原样读取，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint8_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::array<uint8_t, 4> k = {{0x02, 0x00, 0x86, 0x04}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -523,15 +655,20 @@ TEST(Arrays, Array4xUint8TooManyBytes)
 {
     // last byte should not get unpacked
     // an array of bytes will be read verbatim, low-order element first
+    // 最后一个字节不应被解包
+    // 字节数组将原样读取，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04, 0x22};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint8_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::array<uint8_t, 4> k = {{0x02, 0x00, 0x86, 0x04}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -539,17 +676,24 @@ TEST(Arrays, Array4xUint8InsufficientBytes)
 {
     // last byte should not get unpacked
     // an array of bytes will be read verbatim, low-order element first
+    // 最后一个字节不应被解包
+    // 字节数组将原样读取，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint8_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     // arrays of uint8_t will be unpacked all at once
     // so nothing will get unpacked
+    // uint8_t 数组会一次性全部解包
+    // 因此什么都不会被解出
     std::array<uint8_t, 4> k = {{0, 0, 0, 0}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -561,17 +705,26 @@ TEST(Arrays, Array4xUint32)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 多字节值数组将按顺序解包，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::SecureBuffer i = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34, 0x12};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint32_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::array<uint32_t, 4> k = {
         {0x11223344, 0x22446688, 0x33557799, 0x12345678}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -584,18 +737,28 @@ TEST(Arrays, Array4xUint32TooManyBytes)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 最后一个字节不应被解包
+    // 多字节值数组将按顺序解包，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::SecureBuffer i = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66,
                             0x44, 0x22, 0x99, 0x77, 0x55, 0x33,
                             0x78, 0x56, 0x34, 0x12, 0xaa};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint32_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::array<uint32_t, 4> k = {
         {0x11223344, 0x22446688, 0x33557799, 0x12345678}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -608,17 +771,28 @@ TEST(Arrays, Array4xUint32InsufficientBytes)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 最后一个值不应被解包
+    // 多字节值数组将按顺序解包，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::SecureBuffer i = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::array<uint32_t, 4> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_NE(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     // arrays of uint32_t will be unpacked in a way that looks atomic
+    // uint32_t 数组的解包方式看起来是原子的
     std::array<uint32_t, 4> k = {{0, 0, 0, 0}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -630,21 +804,32 @@ TEST(Vectors, VectorUint32)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 多字节值 vector 将按顺序解包，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::SecureBuffer i = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34, 0x12};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<uint32_t> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::vector<uint32_t> k = {0x11223344, 0x22446688, 0x33557799, 0x12345678};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
 // combination of TooManyBytes and InsufficientBytes because
 // vectors will attempt to unpack full <T>s until the end of the input
+// 这是 TooManyBytes 与 InsufficientBytes 的组合，因为
+// vector 会尝试解出完整的 <T>，直到输入结束
 TEST(Vectors, VectorUint32NonIntegralBytes)
 {
     // last value should not get unpacked
@@ -655,54 +840,76 @@ TEST(Vectors, VectorUint32NonIntegralBytes)
     // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
     // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
     // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
+    // 最后一个值不应被解包
+    // 多字节值 vector 将按顺序解包，低位元素优先，
+    // 每个多字节元素按低位字节顺序排列，
+    // 并将尝试消耗剩余的所有字节
+    // v[0][7:0] v[0][15:9] v[0][23:16] v[0][31:24]
+    // v[1][7:0] v[1][15:9] v[1][23:16] v[1][31:24]
+    // v[2][7:0] v[2][15:9] v[2][23:16] v[2][31:24]
+    // v[3][7:0] v[3][15:9] v[3][23:16] v[3][31:24]
     ipmi::SecureBuffer i = {0x44, 0x33, 0x22, 0x11, 0x88, 0x66, 0x44, 0x22,
                             0x99, 0x77, 0x55, 0x33, 0x78, 0x56, 0x34};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<uint32_t> v;
     // check that the vector unpacks successfully
+    // 检查 vector 是否解包成功
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     // arrays of uint32_t will be unpacked one at a time, so the
     // last entry should not get unpacked properly
+    // uint32_t 数组会逐个解包，因此
+    // 最后一项无法被正确解出
     std::vector<uint32_t> k = {0x11223344, 0x22446688, 0x33557799};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
 TEST(Vectors, VectorUint8)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<uint8_t> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::vector<uint8_t> k = {0x02, 0x00, 0x86, 0x04};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
 TEST(Vectors, VectorUint8WithSizeOk)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x03, 0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t s{};
     ASSERT_EQ(p.unpack(s), 0);
     ASSERT_EQ(s, 3);
     // request s bytes for the vector and a single trailing byte
+    // 为 vector 请求 s 字节，再加一个尾部字节
     std::vector<uint8_t> v{};
     v.resize(s);
     uint8_t b{};
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v, b), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::vector<uint8_t> k = {0x02, 0x00, 0x86};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
     ASSERT_EQ(b, 0x04);
 }
@@ -710,79 +917,98 @@ TEST(Vectors, VectorUint8WithSizeOk)
 TEST(Vectors, VectorUint8WithSizeInsufficientBytes)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x06, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     uint8_t s{};
     ASSERT_EQ(p.unpack(s), 0);
     ASSERT_EQ(s, 6);
     // request s bytes for the vector and a single trailing byte
+    // 为 vector 请求 s 字节，再加一个尾部字节
     std::vector<uint8_t> v{};
     v.resize(s);
     ASSERT_EQ(p.unpack(v), 1);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
 }
 
 TEST(Vectors, VectorEmptyOk)
 {
     // an empty input vector to show that unpacking elements is okay
+    // 空输入 vector，说明解包元素是可行的
     ipmi::SecureBuffer i{};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<uint32_t> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::vector<uint32_t> k{};
     // check that the unpacked vector is empty as expected
+    // 检查解包出的 vector 是否如预期为空
     ASSERT_EQ(v, k);
 }
 
 TEST(Vectors, VectorOfTuplesOk)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<std::tuple<uint8_t, uint8_t>> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::vector<std::tuple<uint8_t, uint8_t>> k = {{0x02, 0x00}, {0x86, 0x04}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
 TEST(Vectors, VectorOfTuplesInsufficientBytes)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04, 0xb4};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::vector<std::tuple<uint8_t, uint8_t>> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
 }
 
 TEST(Vectors, VectorOfTuplesWithSizeOk)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x03, 0x02, 0x00, 0x86, 0x04, 0x17, 0x33, 0x88};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t s{};
     ASSERT_EQ(p.unpack(s), 0);
     ASSERT_EQ(s, 3);
     // request s bytes for the vector and a single trailing byte
+    // 为 vector 请求 s 字节，再加一个尾部字节
     std::vector<std::tuple<uint8_t, uint8_t>> v;
     v.resize(s);
     uint8_t b{};
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v, b), 0);
     std::vector<std::tuple<uint8_t, uint8_t>> k = {
         {0x02, 0x00}, {0x86, 0x04}, {0x17, 0x33}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
     ASSERT_EQ(b, 0x88);
 }
@@ -790,16 +1016,19 @@ TEST(Vectors, VectorOfTuplesWithSizeOk)
 TEST(Vectors, VectorOfTuplesWithSizeInsufficientBytes)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x06, 0x02, 0x00, 0x86, 0x04, 0xb4};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint8_t s{};
     ASSERT_EQ(p.unpack(s), 0);
     ASSERT_EQ(s, 6);
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     std::vector<std::tuple<uint8_t, uint8_t>> v;
     v.resize(s);
     ASSERT_EQ(p.unpack(v), 1);
     // check that the payload was not fully unpacked
+    // 检查 payload 是否未完全解包
     ASSERT_FALSE(p.fullyUnpacked());
 }
 
@@ -807,34 +1036,46 @@ TEST(Vectors, VectorOfTuplesWithSizeInsufficientBytes)
 // because it will always unpack whatever bytes are remaining
 // TEST(Vectors, VectorUint8TooManyBytes) {}
 // TEST(Vectors, VectorUint8InsufficientBytes) {}
+// 无法对 vector<uint8_t> 测试 TooManyBytes 或 InsufficientBytes，
+// 因为它总会解包掉所有剩余的字节
+// TEST(Vectors, VectorUint8TooManyBytes) {}
+// TEST(Vectors, VectorUint8InsufficientBytes) {}
 
 TEST(UnpackAdvanced, OptionalOk)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0xbe, 0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::optional<std::tuple<uint8_t, uint32_t>> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     std::optional<std::tuple<uint8_t, uint32_t>> k{{0xbe, 0x04860002}};
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
 TEST(UnpackAdvanced, OptionalInsufficientBytes)
 {
     // a vector of bytes will be unpacked verbatim, low-order element first
+    // 字节 vector 将原样解包，低位元素优先
     ipmi::SecureBuffer i = {0x02, 0x00, 0x86, 0x04};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::optional<std::tuple<uint8_t, uint32_t>> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_FALSE(p.fullyUnpacked());
     std::optional<std::tuple<uint8_t, uint32_t>> k;
     // check that the bytes were correctly unpacked (in byte order)
+    // 检查字节是否按字节顺序正确打包
     ASSERT_EQ(v, k);
 }
 
@@ -842,6 +1083,11 @@ TEST(UnpackAdvanced, Uints)
 {
     // all elements will be unpacked in order, with each multi-byte
     // element being processed LSByte first
+    // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
+    // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
+    // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
+    // 所有元素将按顺序解包，每个多字节元素
+    // 按低位字节优先处理
     // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
     // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
     // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
@@ -853,14 +1099,17 @@ TEST(UnpackAdvanced, Uints)
     uint32_t v3;
     uint64_t v4;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2, v3, v4), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint8_t k1 = 0x02;
     uint16_t k2 = 0x0604;
     uint32_t k3 = 0x44332211;
     uint64_t k4 = 0xccbbaa9988776655ull;
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
     ASSERT_EQ(v3, k3);
@@ -874,13 +1123,20 @@ TEST(UnpackAdvanced, TupleInts)
     // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
     // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
     // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
+    // 所有元素将按顺序解包，每个多字节元素
+    // 按低位字节优先处理
+    // v1[7:0] v2[7:0] v2[15:8] v3[7:0] v3[15:8] v3[23:16] v3[31:24]
+    // v4[7:0] v4[15:8] v4[23:16] v4[31:24]
+    // v4[39:25] v4[47:40] v4[55:48] v4[63:56]
     ipmi::SecureBuffer i = {0x02, 0x04, 0x06, 0x11, 0x22, 0x33, 0x44, 0x55,
                             0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     std::tuple<uint8_t, uint16_t, uint32_t, uint64_t> v;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint8_t k1 = 0x02;
     uint16_t k2 = 0x0604;
@@ -888,6 +1144,7 @@ TEST(UnpackAdvanced, TupleInts)
     uint64_t k4 = 0xccbbaa9988776655ull;
     auto k = std::make_tuple(k1, k2, k3, k4);
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v, k);
 }
 
@@ -900,6 +1157,13 @@ TEST(UnpackAdvanced, BoolsnBitfieldsnFixedIntsOhMy)
     // v3[4:0] will use k[0][7:3], v3[6:5] will use k[1][1:0]
     // v4 will use k[1][2]
     // v5 will use k[1][7:3]
+    // 每个元素依次解包，先填充低位比特，
+    // 多字节值则按低位字节优先解包
+    // v1 将使用 k[0][1:0]
+    // v2 将使用 k[0][2]
+    // v3[4:0] 将使用 k[0][7:3]，v3[6:5] 将使用 k[1][1:0]
+    // v4 将使用 k[1][2]
+    // v5 将使用 k[1][7:3]
     ipmi::SecureBuffer i = {0x9e, 0xdb};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint2_t v1;
@@ -908,8 +1172,10 @@ TEST(UnpackAdvanced, BoolsnBitfieldsnFixedIntsOhMy)
     bool v4;
     uint5_t v5;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2, v3, v4, v5), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint2_t k1 = 2;          // binary 0b10
     bool k2 = true;          // binary 0b1
@@ -917,6 +1183,7 @@ TEST(UnpackAdvanced, BoolsnBitfieldsnFixedIntsOhMy)
     bool k4 = false;         // binary 0b0
     uint5_t k5 = 27;         // binary 0b11011
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
     ASSERT_EQ(v3, k3);
@@ -939,6 +1206,19 @@ TEST(UnpackAdvanced, UnalignedBitUnpacking)
     // v6[19:12] will use k[5][7:0] v6[27:20] will use k[6][7:0]
     // v6[31:28] will use k[7][3:0]
     // v7 will use k[7][7:4]
+    // 未对齐的多字节值将与其他比特一样解包，
+    // 实际上从一个大值中读取，低位
+    // 比特优先，随后按低位字节消耗流
+    // v1 将使用 k[0][1:0]
+    // v2[5:0] 将使用 k[0][7:2]，v2[7:6] 将使用 k[1][1:0]
+    // v3 将使用 k[1][2]
+    // v4[4:0] 将使用 k[1][7:3]，v4[12:5] 将使用 k[2][7:0]
+    // v4[15:13] 将使用 k[3][2:0]
+    // v5 将使用 k[3][3]
+    // v6[3:0] 将使用 k[3][7:0]，v6[11:4] 将使用 k[4][7:0]
+    // v6[19:12] 将使用 k[5][7:0]，v6[27:20] 将使用 k[6][7:0]
+    // v6[31:28] 将使用 k[7][3:0]
+    // v7 将使用 k[7][7:4]
     ipmi::SecureBuffer i = {0x96, 0xd2, 0x2a, 0xcd, 0xd3, 0x3b, 0xbc, 0x9d};
     ipmi::message::Payload p(std::forward<ipmi::SecureBuffer>(i));
     uint2_t v1;
@@ -949,8 +1229,10 @@ TEST(UnpackAdvanced, UnalignedBitUnpacking)
     uint32_t v6;
     uint4_t v7;
     // check that the number of bytes matches
+    // 检查字节数是否匹配
     ASSERT_EQ(p.unpack(v1, v2, v3, v4, v5, v6, v7), 0);
     // check that the payload was fully unpacked
+    // 检查 payload 是否已完全解包
     ASSERT_TRUE(p.fullyUnpacked());
     uint2_t k1 = 2;           // binary 0b10
     uint8_t k2 = 0xa5;        // binary 0b10100101
@@ -960,6 +1242,7 @@ TEST(UnpackAdvanced, UnalignedBitUnpacking)
     uint32_t k6 = 0xdbc3bd3c; // binary 0b11011011110000111011110100111100
     uint4_t k7 = 9;           // binary 0b1001
     // check that the bytes were correctly unpacked (LSB first)
+    // 检查字节是否正确解包（低位字节优先）
     ASSERT_EQ(v1, k1);
     ASSERT_EQ(v2, k2);
     ASSERT_EQ(v3, k3);

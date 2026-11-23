@@ -1,3 +1,10 @@
+
+/**
+ * @file systemintfcmds.cpp
+ * @brief System Interface（BT/KCS）相关命令：Get BT Caps 等。
+ */
+/* @file systemintfcmds.cpp
+ * @brief System Interface（BT/KCS）相关命令：Get BT Caps 等。 */
 #include "config.h"
 
 #include "systemintfcmds.hpp"
@@ -18,12 +25,16 @@ void registerNetFnAppFunctions() __attribute__((constructor));
 using namespace sdbusplus::server::xyz::openbmc_project::control;
 
 // For accessing Host command manager
+// 用于访问 Host 命令管理器
 using cmdManagerPtr = std::unique_ptr<phosphor::host::command::Manager>;
 extern cmdManagerPtr& ipmid_get_host_cmd_manager();
 
 //-------------------------------------------------------------------
 // Called by Host post response from Get_Message_Flags
 //-------------------------------------------------------------------
+// -------------------------------------------------------------------
+// 由主机在 Get_Message_Flags 的响应之后调用
+// -------------------------------------------------------------------
 ipmi::RspType<uint16_t,              // id
               uint8_t,               // type
               uint24_t,              //  manuf_id
@@ -35,6 +46,7 @@ ipmi::RspType<uint16_t,              // id
     ipmiAppReadEventBuffer(ipmi::Context::ptr& ctx)
 {
     // require this to be limited to system interface
+    // 要求此操作仅限于 system interface
     if (ctx->channel != ipmi::channelSystemIface)
     {
         return ipmi::responseInvalidCommand();
@@ -44,6 +56,7 @@ ipmi::RspType<uint16_t,              // id
     constexpr uint8_t selRecordTypeOem = 0xc0;
 
     // read manufacturer ID from dev_id file
+    // 从 dev_id 文件读取制造商 ID
     static uint24_t manufId{};
     if (!manufId)
     {
@@ -62,10 +75,13 @@ ipmi::RspType<uint16_t,              // id
     constexpr uint32_t timestamp{0};
 
     // per IPMI spec NetFunction for OEM
+    // 按 IPMI 规范，OEM 使用的 NetFunction（网络功能号）
     constexpr uint8_t netfun = 0x3a;
 
     // Read from the Command Manager queue. What gets returned is a
     // pair of <command, data> that can be directly used here
+    // 从 Command Manager（命令管理器）队列读取。返回的是一对
+    // <command, data>（命令、数据），可以在这里直接使用
     const auto& [cmd, data0] = ipmid_get_host_cmd_manager()->getNextCommand();
     constexpr uint8_t dataUnused = 0xff;
 
@@ -78,6 +94,10 @@ ipmi::RspType<uint16_t,              // id
 // Called by Host on seeing a SMS_ATN bit set. Return a hardcoded
 // value of 0x0 to indicate Event Message Buffer is not supported
 //-------------------------------------------------------------------
+// ---------------------------------------------------------------------
+// 主机在检测到 SMS_ATN 位置位时调用本函数。返回一个硬编码的
+// 0x0 值，表示不支持 Event Message Buffer（事件消息缓冲区）
+// -------------------------------------------------------------------
 ipmi::RspType<uint8_t> ipmiAppGetMessageFlags()
 {
     // From IPMI spec V2.0 for Get Message Flags Command :
@@ -86,6 +106,12 @@ ipmi::RspType<uint8_t> ipmiAppGetMessageFlags()
     // or when the Event Message buffer is disabled.
     // This path is used to communicate messages to the host
     // from within the phosphor::host::command::Manager
+    // 来自 IPMI 规范 V2.0 的 Get Message Flags 命令：
+    // 从 LSB 数起的 bit[1]：1b 表示 Event Message Buffer Full（事件消息缓冲区已满）。
+    // 如果不支持 Event Message Buffer，
+    // 或 Event Message Buffer 被禁用时，返回 0。
+    // 此路径用于从 phosphor::host::command::Manager 内部
+    // 向主机传递消息。
     constexpr uint8_t setEventMsgBufferNotSupported = 0x0;
     return ipmi::responseSuccess(setEventMsgBufferNotSupported);
 }
@@ -130,6 +156,9 @@ ipmi::RspType<> ipmiAppSetBMCGlobalEnable(
     // Recv Message Queue and SEL are enabled by default.
     // Event Message buffer are disabled by default (not supported).
     // Any request that try to change the mask will be rejected
+    // 接收消息队列（Recv Message Queue）和 SEL 默认启用。
+    // 事件消息缓冲区（Event Message buffer）默认禁用（不支持）。
+    // 任何试图更改该掩码的请求都将被拒绝。
     if (!receiveMessageQueueInterruptEnabled || !systemEventLogEnable ||
         eventMessageBufferFullInterruptEnabled || eventMessageBufferEnabled ||
         OEM0Enabled || OEM1Enabled || OEM2Enabled || reserved)
@@ -143,6 +172,7 @@ ipmi::RspType<> ipmiAppSetBMCGlobalEnable(
 namespace
 {
 // Static storage to keep the object alive during process life
+// 静态存储，使该对象在整个进程生命周期内保持存活
 std::unique_ptr<phosphor::host::command::Host> host
     __attribute__((init_priority(101)));
 std::unique_ptr<sdbusplus::server::manager_t> objManager
@@ -152,32 +182,38 @@ std::unique_ptr<sdbusplus::server::manager_t> objManager
 void registerNetFnAppFunctions()
 {
     // <Read Event Message Buffer>
+    // <Read Event Message Buffer>（读取事件消息缓冲区）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdReadEventMessageBuffer,
                           ipmi::Privilege::Admin, ipmiAppReadEventBuffer);
 
     // <Set BMC Global Enables>
+    // <Set BMC Global Enables>（设置 BMC 全局使能）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdSetBmcGlobalEnables,
                           ipmi::Privilege::Admin, ipmiAppSetBMCGlobalEnable);
 
     // <Get BMC Global Enables>
+    // <Get BMC Global Enables>（获取 BMC 全局使能）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetBmcGlobalEnables,
                           ipmi::Privilege::User, ipmiAppGetBMCGlobalEnable);
 
     // <Get Message Flags>
+    // <Get Message Flags>（获取消息标志）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdGetMessageFlags, ipmi::Privilege::Admin,
                           ipmiAppGetMessageFlags);
 
     // Create new xyz.openbmc_project.host object on the bus
+    // 在总线上创建新的 xyz.openbmc_project.host 对象
     auto objPath = std::string{CONTROL_HOST_OBJ_MGR} + '/' + HOST_NAME + '0';
 
     std::unique_ptr<sdbusplus::asio::connection>& sdbusp =
         ipmid_get_sdbus_plus_handler();
 
     // Add sdbusplus ObjectManager.
+    // 添加 sdbusplus ObjectManager（对象管理器）。
     objManager = std::make_unique<sdbusplus::server::manager_t>(
         *sdbusp, CONTROL_HOST_OBJ_MGR);
 

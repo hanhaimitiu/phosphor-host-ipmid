@@ -1,3 +1,10 @@
+
+/**
+ * @file channel_layer.cpp
+ * @brief 通道层：通道信息与访问模式的存取。
+ */
+/*  @file channel_layer.cpp
+ *  @brief 通道层：通道信息与访问模式的存取。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 
 #include "channel_layer.hpp"
 
@@ -29,6 +49,9 @@ bool doesDeviceExist(const uint8_t chNum)
     // TODO: This is not the reliable way to find the device
     // associated with ethernet interface as the channel number to
     // eth association is not done. Need to revisit later
+    // TODO：这不是查找与以太网接口关联设备的可靠方式，
+    // 因为通道号到 eth 的关联尚未完成。
+    // 以后需要重新审视。
     struct stat fileStat = {};
     auto channelName = getChannelName(chNum);
     if (channelName.empty())
@@ -52,6 +75,8 @@ bool isValidPrivLimit(const uint8_t privLimit)
 {
     // Callback privilege is deprecated in OpenBMC
     // At present, "OEM Privilege" is not used in OpenBMC
+    // Callback 权限在 OpenBMC 中已废弃
+    // 目前 OpenBMC 不使用 "OEM Privilege"
     return ((privLimit > PRIVILEGE_CALLBACK) && (privLimit < PRIVILEGE_OEM));
 }
 

@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file selutility.hpp
+ * @brief SEL 辅助的声明。
+ */
+/* @file selutility.hpp
+ * @brief SEL 辅助的声明。 */
+
 #include <ipmid/types.hpp>
 #include <sdbusplus/server.hpp>
 
@@ -59,6 +66,8 @@ constexpr size_t SELRecordLength = 16;
  *
  * IPMI SEL Event Record
  */
+/* @struct SELEventRecord
+ * IPMI SEL 事件记录 */
 struct SELEventRecord
 {
     uint16_t recordID;        //!< Record ID.
@@ -80,6 +89,8 @@ static_assert(sizeof(SELEventRecord) == SELRecordLength);
  *
  * IPMI SEL OEM Record - Type C0h-DFh
  */
+/* @struct SELOEMRecordTypeCD
+ * IPMI SEL OEM 记录 - 类型 C0h-DFh */
 struct SELOEMRecordTypeCD
 {
     uint16_t recordID;         //!< Record ID.
@@ -95,6 +106,8 @@ static_assert(sizeof(SELOEMRecordTypeCD) == SELRecordLength);
  *
  * IPMI SEL OEM Record - Type E0h-FFh
  */
+/* @struct SELOEMRecordTypeEF
+ * IPMI SEL OEM 记录 - 类型 E0h-FFh */
 struct SELOEMRecordTypeEF
 {
     uint16_t recordID;      //!< Record ID.
@@ -115,6 +128,8 @@ union SELEventRecordFormat
  *
  *  IPMI payload for Get SEL Entry command response.
  */
+/* @struct GetSELEntryResponse
+ *  Get SEL Entry 命令响应的 IPMI payload。 */
 struct GetSELEntryResponse
 {
     uint16_t nextRecordID;      //!< Next RecordID.
@@ -134,6 +149,9 @@ static constexpr auto eraseComplete = 0x01;
  *
  *  @return On success return the response of Get SEL entry command.
  */
+/* @brief 将日志条目转换为 SEL
+ *  @param[in] objPath - 日志条目的 DBUS 对象路径。
+ *  @return 成功时返回 Get SEL entry 命令的响应。 */
 GetSELEntryResponse convertLogEntrytoSEL(const std::string& objPath);
 
 /** @brief Get the timestamp of the log entry
@@ -143,6 +161,10 @@ GetSELEntryResponse convertLogEntrytoSEL(const std::string& objPath);
  *  @return On success return the timestamp of the log entry as number of
  *          seconds from epoch.
  */
+/* @brief 获取日志条目的时间戳
+ *  @param[in] objPath - 日志条目的 DBUS 对象路径。
+ *  @return 成功时返回日志条目的时间戳，以距 epoch 的
+ *          秒数表示。 */
 std::chrono::seconds getEntryTimeStamp(const std::string& objPath);
 
 /** @brief Read the logging entry object paths
@@ -158,6 +180,15 @@ std::chrono::seconds getEntryTimeStamp(const std::string& objPath);
  *        typically by Get SEL Info command, so readLoggingObjectPaths is not
  *        invoked before each Get SEL entry command.
  */
+/* @brief 读取日志条目的对象路径
+ *  本 API 读取 logging dbus 的日志条目对象路径，并按
+ *  文件名的数字顺序排序。在填充对象路径前会先清空
+ *  paths。
+ *  @param[in,out] paths - 已排序的日志条目对象路径列表。
+ *  @note 本函数在调用 Get SEL Info 命令或 Delete
+ *        SEL entry 命令时被调用。Get SEL Entry 命令前
+ *        通常先调用 Get SEL Info 命令，因此不会在每次
+ *        Get SEL entry 命令前都调用 readLoggingObjectPaths。 */
 void readLoggingObjectPaths(ObjectPaths& paths);
 
 template <typename T>
@@ -183,6 +214,12 @@ namespace internal
  *  @return On success return the SEL event record, throw an exception in case
  *          of failure.
  */
+/* @brief 将日志条目转换为 SEL 事件记录
+ *  @param[in] objPath - 日志条目的 DBUS 对象路径。
+ *  @param[in] iter - 指向该日志条目对应传感器数据的
+ *                    迭代器
+ *  @return 成功时返回 SEL 事件记录，失败时
+ *          抛出异常。 */
 GetSELEntryResponse prepareSELEntry(
     const std::string& objPath,
     ipmi::sensor::InvObjectIDMap::const_iterator iter);

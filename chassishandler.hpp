@@ -1,13 +1,22 @@
 #pragma once
 
+/**
+ * @file chassishandler.hpp
+ * @brief 机箱 IPMI 命令的声明。
+ */
+/* @file chassishandler.hpp
+ * @brief 机箱 IPMI 命令的声明。 */
+
 #include <stdint.h>
 
 #include <cstddef>
 
 // IPMI Command for a Net Function number as specified by IPMI V2.0 spec.
+// IPMI V2.0 规范中规定的对应某 Net Function 编号的 IPMI 命令。
 using Cmd = uint8_t;
 
 // Various Chassis operations under a single command.
+// 在单条命令下执行多种机箱操作。
 constexpr Cmd cmdPowerOff = 0x00;
 constexpr Cmd cmdPowerOn = 0x01;
 constexpr Cmd cmdPowerCycle = 0x02;

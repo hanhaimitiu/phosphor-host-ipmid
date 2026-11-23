@@ -1,3 +1,10 @@
+
+/**
+ * @file sensordatahandler.cpp
+ * @brief 传感器数据读写 handler 的实现（经 D-Bus get/set）。
+ */
+/* @file sensordatahandler.cpp
+ * @brief 传感器数据读写 handler 的实现（经 D-Bus get/set）。 */
 #include "sensordatahandler.hpp"
 
 #include "sensorhandler.hpp"
@@ -170,6 +177,8 @@ std::optional<GetSensorResponse> assertion(uint8_t id, const Info& sensorInfo,
 {
     // The assertion may contain multiple properties
     // So we have to get the properties from DBus anyway
+    // 该断言可能包含多个属性
+    // 因此无论如何都必须从 DBus 获取属性
     auto response = mapDbusToAssertion(sensorInfo, sensorInfo.sensorPath,
                                        sensorInfo.sensorInterface);
 
@@ -186,6 +195,8 @@ std::optional<GetSensorResponse> eventdata2(uint8_t id, const Info& sensorInfo,
 {
     // The eventdata2 may contain multiple properties
     // So we have to get the properties from DBus anyway
+    // eventdata2 可能包含多个属性
+    // 因此无论如何都必须从 DBus 获取属性
     auto response = mapDbusToEventdata2(sensorInfo);
 
     if (!sensorCacheMap[id].has_value())
@@ -256,6 +267,7 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
             if (bothSet.size() <= value.first || !bothSet.test(value.first))
             {
                 // A BIOS shouldn't do this but ignore if they do.
+                // BIOS 不应这样做，但如果发生了就忽略。
                 continue;
             }
 
@@ -325,6 +337,10 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
         // object on DBUS implements a DBUS interface with no properties.
         // Make sure we add the interface to the list if interfaces on the
         // object with an empty property map.
+        // 无属性的接口 - DBUS 上的传感器对象可能实现了一个
+        // 没有任何属性的 DBUS 接口。
+        // 如果对象上的接口属性映射为空，
+        // 也要确保将该接口加入列表。
         if (interface.second.empty())
         {
             interfaces.emplace(interface.first, ipmi::sensor::PropertyMap{});
@@ -332,6 +348,8 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
         }
         // For a property like functional state the result will be
         // calculated based on the true value of all conditions.
+        // 对于 functional state 这类属性，结果将根据
+        // 所有条件的真值计算得出。
         for (const auto& property : interface.second)
         {
             ipmi::sensor::PropertyMap props;
@@ -342,6 +360,7 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
                 if (assertionSet.test(value.first))
                 {
                     // Skip update if skipOn is ASSERT
+                    // 若 skipOn 为 ASSERT 则跳过更新
                     if (SkipAssertion::ASSERT == value.second.skip)
                     {
                         return ipmi::ccSuccess;
@@ -352,6 +371,7 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
                 else if (deassertionSet.test(value.first))
                 {
                     // Skip update if skipOn is DEASSERT
+                    // 若 skipOn 为 DEASSERT 则跳过更新
                     if (SkipAssertion::DEASSERT == value.second.skip)
                     {
                         return ipmi::ccSuccess;
@@ -414,6 +434,8 @@ std::optional<GetSensorResponse> assertion(uint8_t id, const Info& sensorInfo,
 {
     // The assertion may contain multiple properties
     // So we have to get the properties from DBus anyway
+    // 该断言可能包含多个属性
+    // 因此无论如何都必须从 DBus 获取属性
     namespace fs = std::filesystem;
 
     fs::path path{ipmi::sensor::inventoryRoot};

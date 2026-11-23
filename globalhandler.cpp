@@ -1,3 +1,10 @@
+
+/**
+ * @file globalhandler.cpp
+ * @brief Global IPMI 命令（如 Cold Reset）的实现。
+ */
+/* @file globalhandler.cpp
+ * @brief Global IPMI 命令（如 Cold Reset）的实现。 */
 #include <ipmid/api.hpp>
 #include <ipmid/utils.hpp>
 #include <phosphor-logging/lg2.hpp>
@@ -13,6 +20,9 @@ void registerNetFnGlobalFunctions() __attribute__((constructor));
  *  @param - None
  *  @returns IPMI completion code.
  */
+/* @brief 实现冷复位和热复位命令
+ *  @param - 无
+ *  @returns IPMI 完成码。 */
 ipmi::RspType<> ipmiGlobalReset(ipmi::Context::ptr ctx)
 {
     ipmi::DbusObjectInfo bmcStateObj;
@@ -39,12 +49,14 @@ ipmi::RspType<> ipmiGlobalReset(ipmi::Context::ptr ctx)
     }
 
     // Status code.
+    // 状态码。
     return ipmi::responseSuccess();
 }
 
 void registerNetFnGlobalFunctions()
 {
     // Cold Reset
+    // 冷复位（Cold Reset）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnApp,
                           ipmi::app::cmdColdReset, ipmi::Privilege::Admin,
                           ipmiGlobalReset);

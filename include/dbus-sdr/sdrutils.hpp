@@ -1,3 +1,10 @@
+
+/**
+ * @file sdrutils.hpp
+ * @brief SDR 工具函数的声明。
+ */
+/*  @file sdrutils.hpp
+ *  @brief SDR 工具函数的声明。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/* // 版权所有 (c) 2018 Intel Corporation
+ * //
+ * // 根据 Apache 许可证 2.0 版（"License"）授权；
+ * // 除非符合许可证的规定，否则不得使用本文件。
+ * // 你可以从以下地址获取许可证副本：
+ * //
+ * //      http://www.apache.org/licenses/LICENSE-2.0
+ * //
+ * // 除非适用法律要求或书面同意，否则本软件
+ * // 按"原样"分发，
+ * // 不提供任何明示或暗示的保证或条件。
+ * // 有关许可证下的具体权限和限制，请参阅许可证
+ * // 本身。 */
 
 #include <boost/bimap.hpp>
 #include <boost/container/flat_map.hpp>
@@ -60,6 +80,7 @@ static constexpr uint8_t reservedSensorNumber = 0xFF;
 namespace details
 {
 // Enable/disable the logging of stats instrumentation
+// 启用/禁用统计插桩的日志记录
 static constexpr bool enableInstrumentation = false;
 
 class IPMIStatsEntry
@@ -86,6 +107,8 @@ class IPMIStatsEntry
 
     // Returns true if this is the first successful reading
     // This is so the caller can log the coefficients used
+    // 如果这是第一次成功读取则返回 true
+    // 这样调用方可以记录所使用的系数
     bool updateReading(double reading, int raw)
     {
         if constexpr (!enableInstrumentation)
@@ -96,9 +119,11 @@ class IPMIStatsEntry
         bool first = ((numReadings == 0) && (numMissing == 0));
 
         // Sensors can use "nan" to indicate unavailable reading
+        // 传感器可以用 "nan" 表示读数不可用
         if (!(std::isfinite(reading)))
         {
             // Only show this if beginning a new streak
+            // 仅在开始新的一串（streak）时显示此内容
             if (numStreakMiss == 0)
             {
                 lg2::error(
@@ -116,6 +141,7 @@ class IPMIStatsEntry
         }
 
         // Only show this if beginning a new streak and not the first time
+        // 仅在开始新的一串且不是第一次时显示此内容
         if ((numStreakRead == 0) && (numReadings != 0))
         {
             lg2::error(
@@ -127,6 +153,7 @@ class IPMIStatsEntry
         }
 
         // Initialize min/max if the first successful reading
+        // 如果是第一次成功读取，则初始化 min/max
         if (numReadings == 0)
         {
             lg2::error(
@@ -142,6 +169,7 @@ class IPMIStatsEntry
         ++numStreakRead;
 
         // Only provide subsequent output if new min/max established
+        // 仅在建立新的 min/max 时提供后续输出
         if (reading < minValue)
         {
             lg2::error(
@@ -175,9 +203,11 @@ class IPMIStatsTable
         char hexbuf[16];
 
         // Pad vector until entries[index] becomes a valid index
+        // 填充 vector 直到 entries[index] 成为有效索引
         while (entries.size() <= index)
         {
             // As name not known yet, use human-readable hex as name
+            // 由于名称尚不清楚，使用人类可读的十六进制作为名称
             IPMIStatsEntry newEntry;
             sprintf(hexbuf, "0x%02zX", entries.size());
             newEntry.updateName(hexbuf);
@@ -237,6 +267,7 @@ class IPMIWriteTable
     void padEntries(size_t index)
     {
         // Pad vector until entries[index] becomes a valid index
+        // 填充 vector 直到 entries[index] 成为有效索引
         if (entries.size() <= index)
         {
             entries.resize(index + 1);
@@ -264,6 +295,8 @@ class IPMIWriteTable
 
 // Store information for threshold sensors and they are not used by VR
 // sensors. These objects are global singletons, used from a variety of places.
+// 存储阈值传感器的信息，VR 传感器不使用这些信息。
+// 这些对象是全局单例，在多个地方使用。
 inline IPMIStatsTable sdrStatsTable;
 inline IPMIWriteTable sdrWriteTable;
 
@@ -278,6 +311,13 @@ inline IPMIWriteTable sdrWriteTable;
  * paths updated successfully, previous amount if all failed. The "vr"
  * sensor path is optional, and does not participate in the return value.
  */
+/* 在 ObjectMapper 中搜索传感器并更新到 subtree。
+ * 该函数将在 /xyz/openbmc_project/sensors 或
+ * /xyz/openbmc_project/extsensors 下搜索传感器。
+ * 它还会可选地在 /xyz/openbmc_project/vr 下搜索 VR 类型传感器。
+ * @return 更新成功的 "sensors" 或 "extsensors" 传感器路径的
+ * 次数，若全部失败则返回之前的次数。"vr" 传感器路径是可选的，
+ * 不参与返回值。 */
 uint16_t getSensorSubtree(std::shared_ptr<SensorSubTree>& subtree);
 
 bool getSensorNumMap(std::shared_ptr<SensorNumMap>& sensorNumMap);

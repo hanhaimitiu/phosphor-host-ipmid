@@ -1,3 +1,10 @@
+
+/**
+ * @file api-types.hpp
+ * @brief IPMI 回调相关的枚举与类型定义。
+ */
+/*  @file api-types.hpp
+ *  @brief IPMI 回调相关的枚举与类型定义。 */
 /*
  * Copyright © 2018 Intel Corporation
  *
@@ -14,6 +21,16 @@
  * limitations under the License.
  *
  */
+/*  版权所有 (c) 2018 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 #include <ipmid/iana.hpp>
 
@@ -43,6 +60,10 @@ constexpr Group groupDCMI = 0xDC;
  * This may be linked to what level of integration the handler
  * is being created at.
  */
+/* 将优先级设置为所需的最小数值，
+ * 这样如果需要的话，其他人可以覆盖它。
+ * 这可能与 handler 被创建时的
+ * 集成层次有关。 */
 constexpr int prioOpenBmcBase = 10;
 constexpr int prioOemBase = 20;
 constexpr int prioOdmBase = 30;
@@ -52,11 +73,16 @@ constexpr int prioMax = 50;
 /*
  * Channel IDs pulled from the IPMI 2.0 specification
  */
+/* 取自 IPMI 2.0 规范的通道 ID */
 constexpr int channelPrimaryIpmb = 0x00;
 // 0x01-0x0B Implementation specific
 // Implementation specific channel numbers are specified
 // by a configuration file external to ipmid
 // 0x0C-0x0D reserved
+// 0x01-0x0B 特定于实现
+// 特定于实现的通道号由
+// ipmid 外部的配置文件指定
+// 0x0C-0x0D 保留
 constexpr int channelCurrentIface = 0x0E; // 'Present I/F'
 constexpr int channelSystemIface = 0x0F;
 
@@ -66,6 +92,10 @@ constexpr int channelSystemIface = 0x0F;
  * privilege level. Those commands which can be executed via system interface
  * only should use SYSTEM_INTERFACE
  */
+/* 指定执行命令所需的最低特权级
+ * 这意味着命令可在给定特权级或更高特权级上执行。
+ * 那些只能通过系统接口执行的命令
+ * 应使用 SYSTEM_INTERFACE */
 enum class Privilege : uint8_t
 {
     None = 0x00,
@@ -77,19 +107,25 @@ enum class Privilege : uint8_t
 };
 
 // IPMI Net Function number as specified by IPMI V2.0 spec.
+// IPMI V2.0 规范定义的 Net Function number。
 using NetFn = uint8_t;
 
 // IPMI Command for a Net Function number as specified by IPMI V2.0 spec.
+// IPMI V2.0 规范定义的某个 Net Function number 的 IPMI Command。
 using Cmd = uint8_t;
 
 // ipmi function return the status code
+// ipmi 函数返回状态码
 using Cc = uint8_t;
 
 // IPMI 2.0 and DCMI 1.5 standard commands, namespaced by NetFn
 // OEM and non-standard commands should be defined where they are used
+// IPMI 2.0 和 DCMI 1.5 标准命令，按 NetFn 划分命名空间
+// OEM 和非标准命令应在使用处定义
 namespace app
 {
 // 0x00 reserved
+// 0x00 保留
 constexpr Cmd cmdGetDeviceId = 0x01;
 constexpr Cmd cmdColdReset = 0x02;
 constexpr Cmd cmdWarmReset = 0x03;
@@ -104,11 +140,14 @@ constexpr Cmd cmdGetCmdSubFnSupport = 0x0B;
 constexpr Cmd cmdGetConfigurableCmds = 0x0C;
 constexpr Cmd cmdGetConfigurableCmdSubFns = 0x0D;
 // 0x0E-0x21 unassigned
+// 0x0E-0x21 未分配
 constexpr Cmd cmdResetWatchdogTimer = 0x22;
 // 0x23 unassigned
+// 0x23 未分配
 constexpr Cmd cmdSetWatchdogTimer = 0x24;
 constexpr Cmd cmdGetWatchdogTimer = 0x25;
 // 0x26-0x2D unassigned
+// 0x26-0x2D 未分配
 constexpr Cmd cmdSetBmcGlobalEnables = 0x2E;
 constexpr Cmd cmdGetBmcGlobalEnables = 0x2F;
 constexpr Cmd cmdClearMessageFlags = 0x30;
@@ -126,6 +165,7 @@ constexpr Cmd cmdSetSessionPrivilegeLevel = 0x3B;
 constexpr Cmd cmdCloseSession = 0x3C;
 constexpr Cmd cmdGetSessionInfo = 0x3D;
 // 0x3E unassigned
+// 0x3E 未分配
 constexpr Cmd cmdGetAuthCode = 0x3F;
 constexpr Cmd cmdSetChannelAccess = 0x40;
 constexpr Cmd cmdGetChannelAccess = 0x41;
@@ -145,8 +185,10 @@ constexpr Cmd cmdGetChannelPayloadSupport = 0x4E;
 constexpr Cmd cmdGetChannelPayloadVersion = 0x4F;
 constexpr Cmd cmdGetChannelOemPayloadInfo = 0x50;
 // 0x51 unassigned
+// 0x51 未分配
 constexpr Cmd cmdMasterWriteRead = 0x52;
 // 0x53 unassigned
+// 0x53 未分配
 constexpr Cmd cmdGetChannelCipherSuites = 0x54;
 constexpr Cmd cmdSuspendResumePayloadEnc = 0x55;
 constexpr Cmd cmdSetChannelSecurityKeys = 0x56;
@@ -154,12 +196,14 @@ constexpr Cmd cmdGetSystemIfCapabilities = 0x57;
 constexpr Cmd cmdSetSystemInfoParameters = 0x58;
 constexpr Cmd cmdGetSystemInfoParameters = 0x59;
 // 0x5A-0x5F unassigned
+// 0x5A-0x5F 未分配
 constexpr Cmd cmdSetCommandEnables = 0x60;
 constexpr Cmd cmdGetCommandEnables = 0x61;
 constexpr Cmd cmdSetCommandSubFnEnables = 0x62;
 constexpr Cmd cmdGetCommandSubFnEnables = 0x63;
 constexpr Cmd cmdGetOemNetFnIanaSupport = 0x64;
 // 0x65-0xff unassigned
+// 0x65-0xff 未分配
 } // namespace app
 
 namespace chassis
@@ -177,8 +221,10 @@ constexpr Cmd cmdGetSystemBootOptions = 0x09;
 constexpr Cmd cmdSetFrontPanelButtonEnables = 0x0A;
 constexpr Cmd cmdSetPowerCycleInterval = 0x0B;
 // 0x0C-0x0E unassigned
+// 0x0C-0x0E 未分配
 constexpr Cmd cmdGetPohCounter = 0x0F;
 // 0x10-0xFF unassigned
+// 0x10-0xFF 未分配
 } // namespace chassis
 
 namespace sensor_event
@@ -187,6 +233,7 @@ constexpr Cmd cmdSetEventReceiver = 0x00;
 constexpr Cmd cmdGetEventReceiver = 0x01;
 constexpr Cmd cmdPlatformEvent = 0x02;
 // 0x03-0x0F unassigned
+// 0x03-0x0F 未分配
 constexpr Cmd cmdGetPefCapabilities = 0x10;
 constexpr Cmd cmdArmPefPostponeTimer = 0x11;
 constexpr Cmd cmdSetPefConfigurationParams = 0x12;
@@ -212,15 +259,18 @@ constexpr Cmd cmdSetSensorType = 0x2E;
 constexpr Cmd cmdGetSensorType = 0x2F;
 constexpr Cmd cmdSetSensorReadingAndEvtSts = 0x30;
 // 0x31-0xFF unassigned
+// 0x31-0xFF 未分配
 } // namespace sensor_event
 
 namespace storage
 {
 // 0x00-0x0F unassigned
+// 0x00-0x0F 未分配
 constexpr Cmd cmdGetFruInventoryAreaInfo = 0x10;
 constexpr Cmd cmdReadFruData = 0x11;
 constexpr Cmd cmdWriteFruData = 0x12;
 // 0x13-0x1F unassigned
+// 0x13-0x1F 未分配
 constexpr Cmd cmdGetSdrRepositoryInfo = 0x20;
 constexpr Cmd cmdGetSdrRepositoryAllocInfo = 0x21;
 constexpr Cmd cmdReserveSdrRepository = 0x22;
@@ -235,6 +285,7 @@ constexpr Cmd cmdEnterSdrRepoUpdateMode = 0x2A;
 constexpr Cmd cmdExitSdrReposUpdateMode = 0x2B;
 constexpr Cmd cmdRunInitializationAgent = 0x2C;
 // 0x2D-0x3F unassigned
+// 0x2D-0x3F 未分配
 constexpr Cmd cmdGetSelInfo = 0x40;
 constexpr Cmd cmdGetSelAllocationInfo = 0x41;
 constexpr Cmd cmdReserveSel = 0x42;
@@ -250,6 +301,7 @@ constexpr Cmd cmdSetAuxiliaryLogStatus = 0x5B;
 constexpr Cmd cmdGetSelTimeUtcOffset = 0x5C;
 constexpr Cmd cmdSetSelTimeUtcOffset = 0x5D;
 // 0x5E-0xFF unassigned
+// 0x5E-0xFF 未分配
 } // namespace storage
 
 namespace transport
@@ -302,12 +354,14 @@ constexpr Cmd cmdSetChassisDeviceId = 0x14;
 constexpr Cmd cmdBridgeRequest = 0x20;
 constexpr Cmd cmdBridgeMessage = 0x21;
 // 0x22-0x2F unassigned
+// 0x22-0x2F 未分配
 constexpr Cmd cmdGetEventCount = 0x30;
 constexpr Cmd cmdSetEventDestination = 0x31;
 constexpr Cmd cmdSetEventReceptionState = 0x32;
 constexpr Cmd cmdSendIcmbEventMessage = 0x33;
 constexpr Cmd cmdGetEventDestination = 0x34;
 constexpr Cmd cmdGetEventReceptionState = 0x35;
+// 0xC0-0xFE OEM Commands
 // 0xC0-0xFE OEM Commands
 constexpr Cmd cmdErrorReport = 0xFF;
 } // namespace bridge
@@ -344,6 +398,11 @@ constexpr Cmd cmdGetBootProgressCode = 0x03;
 // the proper network function which issued the command
 // associated with a response, subtract 1.
 // Note: these will be left shifted when combined with the LUN
+// 这些是命令的网络功能号，响应的
+// 网络功能号是功能号 + 1。因此要确定
+// 发出与某个响应相关联的命令的
+// 正确网络功能号，需减去 1。
+// 注意：与 LUN 组合时这些值将左移。
 constexpr NetFn netFnChassis = 0x00;
 constexpr NetFn netFnBridge = 0x02;
 constexpr NetFn netFnSensor = 0x04;
@@ -352,6 +411,7 @@ constexpr NetFn netFnFirmware = 0x08;
 constexpr NetFn netFnStorage = 0x0A;
 constexpr NetFn netFnTransport = 0x0C;
 // reserved 0Eh..28h
+// 保留 0Eh..28h
 constexpr NetFn netFnGroup = 0x2C;
 constexpr NetFn netFnOem = 0x2E;
 constexpr NetFn netFnOemOne = 0x30;
@@ -366,6 +426,9 @@ constexpr NetFn netFnOemEight = 0x3E;
 // IPMI commands for net functions. Callbacks using this should be careful to
 // parse arguments to the sub-functions and can take advantage of the built-in
 // message handling mechanism to create custom routing
+// 用于网络功能号的 IPMI 命令。使用它的回调应注意
+// 解析子函数的参数，并可以利用内置的
+// 消息处理机制来创建自定义路由
 constexpr Cmd cmdWildcard = 0xFF;
 
 // IPMI standard completion codes specified by the IPMI V2.0 spec.
@@ -377,6 +440,12 @@ constexpr Cmd cmdWildcard = 0xFF;
 // command specific errors in the 0x80-0xBE range
 //
 // Alternately, OEM completion codes are in the 0x01-0x7E range
+// IPMI V2.0 规范定义的 IPMI 标准完成码。
+// 这本来可以是 enum class，但那样会让
+// 在其他地方添加 OEM 和命令特定的完成码变得困难。
+// 自定义完成码可以在各个模块中定义，
+// 用于 0x80-0xBE 范围内的命令特定错误
+// 或者，OEM 完成码在 0x01-0x7E 范围内
 constexpr Cc ccSuccess = 0x00;
 constexpr Cc ccBusy = 0xC0;
 constexpr Cc ccInvalidCommand = 0xC1;
@@ -415,6 +484,15 @@ constexpr Cc ccUnspecifiedError = 0xFF;
  * ipmi::RspType which has the optional trailing data built in, with your types
  * defined as parameters.
  */
+/* ipmi 通常有两种返回类型：
+ * 1. 失败：CC 非零；没有尾随数据
+ * 2. 成功：CC 为零；有尾随数据（通常是固定类型）
+ * 使用 ipmi::response(cc, ...)，它会自动为响应打包
+ * 正确的类型，无需显式写出函数将返回的
+ * 所有参数。
+ * 要启用此特性，只需将 ipmi 函数定义为返回
+ * 一个内置可选尾随数据的 ipmi::RspType，
+ * 并将你的类型定义为参数。 */
 
 template <typename... RetTypes>
 using RspType = std::tuple<ipmi::Cc, std::optional<std::tuple<RetTypes...>>>;
@@ -432,6 +510,14 @@ using RspType = std::tuple<ipmi::Cc, std::optional<std::tuple<RetTypes...>>>;
  *
  * @return a standard IPMI return type (as described above)
  */
+/* @brief 创建 IPMI 响应 tuple 的辅助函数
+ * IPMI handler 都返回一个由两部分组成的 tuple：完成码和
+ * 一个包含其余要返回数据的可选 tuple。该辅助函数
+ * 通过从任意数量的参数构造它
+ * 来简化操作。
+ * @param cc - 响应的完成码
+ * @param args... - 要返回的可选值列表
+ * @return 标准的 IPMI 返回类型（如上所述） */
 template <typename... Args>
 static inline auto response(ipmi::Cc cc, Args&&... args)
 {
@@ -455,6 +541,14 @@ static inline auto response(ipmi::Cc cc)
  *
  * @return a standard IPMI return type (as described above)
  */
+/* @brief 创建 IPMI 成功响应 tuple 的辅助函数
+ * IPMI handler 都返回一个由两部分组成的 tuple：完成码和
+ * 一个包含其余要返回数据的可选 tuple。该辅助函数
+ * 通过从任意数量的参数构造它来简化操作。
+ * 由于是成功响应，它会自动打包完成码，
+ * 无需显式传入。
+ * @param args... - 要返回的可选值列表
+ * @return 标准的 IPMI 返回类型（如上所述） */
 template <typename... Args>
 static inline auto responseSuccess(Args&&... args)
 {
@@ -466,6 +560,7 @@ static inline auto responseSuccess()
 }
 
 /* helper functions for the various standard error response types */
+/* 各种标准错误响应类型的辅助函数 */
 static inline auto responseBusy()
 {
     return response(ccBusy);

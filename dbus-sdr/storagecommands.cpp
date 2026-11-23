@@ -1,3 +1,10 @@
+
+/**
+ * @file storagecommands.cpp
+ * @brief 存储 IPMI 命令（FRU/SEL 读写）的 D-Bus 后端实现。
+ */
+/*  @file storagecommands.cpp
+ *  @brief 存储 IPMI 命令（FRU/SEL 读写）的 D-Bus 后端实现。 */
 /*
 // Copyright (c) 2017-2019 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/* // 版权所有 (c) 2017-2019 Intel Corporation
+ * //
+ * // 根据 Apache 许可证 2.0 版（"License"）授权；
+ * // 除非符合许可证的规定，否则不得使用本文件。
+ * // 你可以从以下地址获取许可证副本：
+ * //
+ * //      http://www.apache.org/licenses/LICENSE-2.0
+ * //
+ * // 除非适用法律要求或书面同意，否则本软件
+ * // 按"原样"分发，
+ * // 不提供任何明示或暗示的保证或条件。
+ * // 有关许可证下的具体权限和限制，请参阅许可证
+ * // 本身。 */
 
 #include "dbus-sdr/storagecommands.hpp"
 
@@ -108,6 +128,8 @@ ManagedObjectType frus;
 
 // we unfortunately have to build a map of hashes in case there is a
 // collision to verify our dev-id
+// 遗憾的是，我们必须构建一个哈希映射，
+// 以防发生冲突时用它来校验 dev-id
 boost::container::flat_map<uint8_t, std::pair<uint16_t, uint8_t>> deviceHashes;
 void registerStorageFunctions() __attribute__((constructor));
 
@@ -130,6 +152,7 @@ bool writeFru(const std::vector<uint8_t>& fru)
     catch (const sdbusplus::exception_t&)
     {
         // todo: log sel?
+        // todo：记录 SEL？
         lg2::error("error writing fru");
         return false;
     }
@@ -153,6 +176,8 @@ void recalculateHashes()
     deviceHashes.clear();
     // hash the object paths to create unique device id's. increment on
     // collision
+    // 对对象路径做哈希以创建唯一的设备 ID。
+    // 发生冲突时递增
     std::hash<std::string> hasher;
     for (const auto& fru : frus)
     {
@@ -187,6 +212,7 @@ void recalculateHashes()
         {
             fruHash = hasher(fru.first.str);
             // can't be 0xFF based on spec, and 0 is reserved for baseboard
+            // 根据规范不能是 0xFF，且 0 保留给 baseboard
             if (fruHash == 0 || fruHash == 0xFF)
             {
                 fruHash = 1;
@@ -203,6 +229,8 @@ void recalculateHashes()
             {
                 fruHash++;
                 // can't be 0xFF based on spec, and 0 is reserved for
+                // baseboard
+                // 根据规范不能是 0xFF，且 0 保留给
                 // baseboard
                 if (fruHash == 0XFF)
                 {
@@ -345,6 +373,7 @@ void startMatch(void)
         });
 
     // call once to populate
+    // 调用一次以填充数据
     boost::asio::spawn(
         *getIoContext(),
         [](boost::asio::yield_context yield) {
@@ -361,6 +390,12 @@ void startMatch(void)
  *  @returns ipmi completion code plus response data
  *   - countWritten  - Count written
  */
+/* @brief 实现 read FRU data 命令
+ *  @param fruDeviceId - FRU Device ID
+ *  @param fruInventoryOffset - 要写入的 FRU Inventory Offset
+ *  @param countToRead - 要读取的数量
+ *  @returns ipmi 完成码加上响应数据
+ *   - countWritten - 已写入数量 */
 ipmi::RspType<uint8_t,             // Count
               std::vector<uint8_t> // Requested data
               >
@@ -410,6 +445,12 @@ ipmi::RspType<uint8_t,             // Count
  *  @returns ipmi completion code plus response data
  *   - countWritten  - Count written
  */
+/* @brief 实现 write FRU data 命令
+ *  @param fruDeviceId - FRU Device ID
+ *  @param fruInventoryOffset - 要写入的 FRU Inventory Offset
+ *  @param dataToWrite - 要写入的数据
+ *  @returns ipmi 完成码加上响应数据
+ *   - countWritten - 已写入数量 */
 ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
     ipmi::Context::ptr ctx, uint8_t fruDeviceId, uint16_t fruInventoryOffset,
     std::vector<uint8_t>& dataToWrite)
@@ -450,20 +491,27 @@ ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
         if (header->multiRecordOffset)
         {
             // This FRU has a MultiRecord Area
+            // 该 FRU 有 MultiRecord Area
             uint8_t endOfList = 0;
             // Walk the MultiRecord headers until the last record
+            // 遍历 MultiRecord 头部直到最后一条记录
             while (!endOfList)
             {
                 // The MSB in the second byte of the MultiRecord header signals
                 // "End of list"
+                // MultiRecord 头部第二个字节中的 MSB 表示
+                // "End of list"（列表结束）
                 endOfList = fru[lastRecordStart + 1] & 0x80;
                 // Third byte in the MultiRecord header is the length
+                // MultiRecord 头部的第三个字节是长度
                 areaLength = fru[lastRecordStart + 2];
                 // This length is in bytes (not 8 bytes like other headers)
+                // 这个长度以字节为单位（不像其他头部那样以 8 字节为单位）
                 areaLength += 5; // The length omits the 5 byte header
                 if (!endOfList)
                 {
                     // Next MultiRecord header
+                    // 下一个 MultiRecord 头部
                     lastRecordStart += areaLength;
                 }
             }
@@ -472,9 +520,12 @@ ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
         {
             // This FRU does not have a MultiRecord Area
             // Get the length of the area in multiples of 8 bytes
+            // 该 FRU 没有 MultiRecord Area。
+            // 以 8 字节的倍数获取该区域的长度
             if (lastWriteAddr > (lastRecordStart + 1))
             {
                 // second byte in record area is the length
+                // 记录区域中的第二个字节是长度
                 areaLength = fru[lastRecordStart + 1];
                 areaLength *= 8; // it is in multiples of 8 bytes
             }
@@ -491,6 +542,7 @@ ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
     if (atEnd)
     {
         // cancel timer, we're at the end so might as well send it
+        // 取消定时器，我们已经到最后了，干脆发送出去
         writeTimer->stop();
         if (!writeFru(fru))
         {
@@ -503,6 +555,8 @@ ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
         fruCache = fru; // Write-back
         // start a timer, if no further data is sent  to check to see if it is
         // valid
+        // 启动一个定时器，如果没有进一步的数据发送，
+        // 以检查其是否有效
         writeTimer->start(std::chrono::duration_cast<std::chrono::microseconds>(
             std::chrono::seconds(writeTimeoutSeconds)));
         countWritten = 0;
@@ -518,6 +572,11 @@ ipmi::RspType<uint8_t> ipmiStorageWriteFruData(
  *   - inventorySize - Number of possible allocation units
  *   - accessType    - Allocation unit size in bytes.
  */
+/* @brief 实现 get FRU inventory area info 命令
+ *  @param fruDeviceId - FRU Device ID
+ *  @returns IPMI 完成码加上响应数据
+ *   - inventorySize - 可能的分配单元数量
+ *   - accessType - 分配单元大小（字节） */
 ipmi::RspType<uint16_t, // inventorySize
               uint8_t>  // accessType
     ipmiStorageGetFruInvAreaInfo(ipmi::Context::ptr ctx, uint8_t fruDeviceId)
@@ -648,6 +707,8 @@ ipmi::Cc getFruSdrs([[maybe_unused]] ipmi::Context::ptr ctx, size_t index,
         }
         // At this point we found the device entry and will populate the
         // information if exist.
+        // 此时我们找到了设备条目，如果存在
+        // 就填充其信息。
         foundDevice = true;
 
         if (maybeName.has_value())
@@ -736,6 +797,7 @@ ipmi::Cc getFruSdrs([[maybe_unused]] ipmi::Context::ptr ctx, size_t index,
 static bool getSELLogFiles(std::vector<std::filesystem::path>& selLogFiles)
 {
     // Loop through the directory looking for ipmi_sel log files
+    // 遍历目录查找 ipmi_sel 日志文件
     for (const std::filesystem::directory_entry& dirEnt :
          std::filesystem::directory_iterator(
              dynamic_sensors::ipmi::sel::selLogDir))
@@ -744,6 +806,7 @@ static bool getSELLogFiles(std::vector<std::filesystem::path>& selLogFiles)
         if (filename.starts_with(dynamic_sensors::ipmi::sel::selLogFilename))
         {
             // If we find an ipmi_sel log file, save the path
+            // 如果找到 ipmi_sel 日志文件，保存其路径
             selLogFiles.emplace_back(
                 dynamic_sensors::ipmi::sel::selLogDir / filename);
         }
@@ -751,6 +814,9 @@ static bool getSELLogFiles(std::vector<std::filesystem::path>& selLogFiles)
     // As the log files rotate, they are appended with a ".#" that is higher for
     // the older logs. Since we don't expect more than 10 log files, we
     // can just sort the list to get them in order from newest to oldest
+    // 日志文件轮转时会追加 ".#"，数字越大表示日志越旧。
+    // 由于我们预计日志文件不会超过 10 个，
+    // 只需对列表排序即可得到从新到旧的顺序
     std::sort(selLogFiles.begin(), selLogFiles.end());
 
     return !selLogFiles.empty();
@@ -759,6 +825,7 @@ static bool getSELLogFiles(std::vector<std::filesystem::path>& selLogFiles)
 static int countSELEntries()
 {
     // Get the list of ipmi_sel log files
+    // 获取 ipmi_sel 日志文件列表
     std::vector<std::filesystem::path> selLogFiles;
     if (!getSELLogFiles(selLogFiles))
     {
@@ -766,6 +833,7 @@ static int countSELEntries()
     }
     int numSELEntries = 0;
     // Loop through each log file and count the number of logs
+    // 遍历每个日志文件并统计日志条数
     for (const std::filesystem::path& file : selLogFiles)
     {
         std::ifstream logStream(file);
@@ -789,9 +857,12 @@ static bool findSELEntry(const int recordID,
 {
     // Record ID is the first entry field following the timestamp. It is
     // preceded by a space and followed by a comma
+    // Record ID 是时间戳之后的第一个条目字段。
+    // 它前面是一个空格，后面是一个逗号
     std::string search = " " + std::to_string(recordID) + ",";
 
     // Loop through the ipmi_sel log entries
+    // 遍历 ipmi_sel 日志条目
     for (const std::filesystem::path& file : selLogFiles)
     {
         std::ifstream logStream(file);
@@ -803,6 +874,7 @@ static bool findSELEntry(const int recordID,
         while (std::getline(logStream, entry))
         {
             // Check if the record ID matches
+            // 检查记录 ID 是否匹配
             if (entry.find(search) != std::string::npos)
             {
                 return true;
@@ -884,10 +956,12 @@ using systemEventType = std::tuple<
     bool,     // Event Direction
     std::array<uint8_t, dynamic_sensors::ipmi::sel::systemEventSize>>; // Event
                                                                        // Data
+                                                                       // 数据
 using oemTsEventType = std::tuple<
     uint32_t, // Timestamp
     std::array<uint8_t, dynamic_sensors::ipmi::sel::oemTsEventSize>>; // Event
                                                                       // Data
+                                                                      // 数据
 using oemEventType =
     std::array<uint8_t, dynamic_sensors::ipmi::sel::oemEventSize>; // Event Data
 
@@ -901,6 +975,8 @@ ipmi::RspType<uint16_t,                   // Next Record ID
 {
     // Only support getting the entire SEL record. If a partial size or non-zero
     // offset is requested, return an error
+    // 只支持获取整个 SEL 记录。如果请求部分长度或非零偏移量，
+    // 则返回错误
     if (offset != 0 || size != ipmi::sel::entireRecord)
     {
         return ipmi::responseRetBytesUnavailable();
@@ -908,6 +984,8 @@ ipmi::RspType<uint16_t,                   // Next Record ID
 
     // Check the reservation ID if one is provided or required (only if the
     // offset is non-zero)
+    // 如果提供或需要预留 ID（仅当偏移量非零时），
+    // 检查该预留 ID
     if (reservationID != 0 || offset != 0)
     {
         if (!checkSELReservation(reservationID))
@@ -917,6 +995,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     }
 
     // Get the ipmi_sel log files
+    // 获取 ipmi_sel 日志文件
     std::vector<std::filesystem::path> selLogFiles;
     if (!getSELLogFiles(selLogFiles))
     {
@@ -928,6 +1007,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     if (targetID == ipmi::sel::firstEntry)
     {
         // The first entry will be at the top of the oldest log file
+        // 第一条条目位于最旧日志文件的顶部
         std::ifstream logStream(selLogFiles.back());
         if (!logStream.is_open())
         {
@@ -942,6 +1022,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     else if (targetID == ipmi::sel::lastEntry)
     {
         // The last entry will be at the bottom of the newest log file
+        // 最后一条条目位于最新日志文件的底部
         std::ifstream logStream(selLogFiles.front());
         if (!logStream.is_open())
         {
@@ -965,6 +1046,9 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     // The format of the ipmi_sel message is "<Timestamp>
     // <ID>,<Type>,<EventData>,[<Generator ID>,<Path>,<Direction>]".
     // First get the Timestamp
+    // ipmi_sel 消息的格式是 "<Timestamp>
+    // <ID>,<Type>,<EventData>,[<Generator ID>,<Path>,<Direction>]"。
+    // 先获取 Timestamp
     size_t space = targetEntry.find_first_of(" ");
     if (space == std::string::npos)
     {
@@ -972,6 +1056,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     }
     std::string entryTimestamp = targetEntry.substr(0, space);
     // Then get the log contents
+    // 然后获取日志内容
     size_t entryStart = targetEntry.find_first_not_of(" ", space);
     if (entryStart == std::string::npos)
     {
@@ -980,6 +1065,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     std::string_view entry(targetEntry);
     entry.remove_prefix(entryStart);
     // Use split to separate the entry into its fields
+    // 使用 split 将条目分离为各个字段
     std::vector<std::string> targetEntryFields;
     boost::split(targetEntryFields, entry, boost::is_any_of(","),
                  boost::token_compress_on);
@@ -1012,6 +1098,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     if (recordType == dynamic_sensors::ipmi::sel::systemEvent)
     {
         // Get the timestamp
+        // 获取时间戳
         std::tm timeStruct = {};
         std::istringstream entryStream(entryTimestamp);
 
@@ -1023,6 +1110,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
         }
 
         // Set the event message revision
+        // 设置事件消息修订版本
         uint8_t evmRev = dynamic_sensors::ipmi::sel::eventMsgRev;
 
         uint16_t generatorID = 0;
@@ -1032,6 +1120,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
         uint7_t eventType = 0;
         bool eventDir = 0;
         // System type events should have six fields
+        // 系统类型事件应有六个字段
         if (targetEntryFields.size() >= 6)
         {
             std::string& generatorIDStr = targetEntryFields[3];
@@ -1039,6 +1128,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
             std::string& eventDirStr = targetEntryFields[5];
 
             // Get the generator ID
+            // 获取生成器 ID
             try
             {
                 generatorID = std::stoul(generatorIDStr, nullptr, 16);
@@ -1049,22 +1139,26 @@ ipmi::RspType<uint16_t,                   // Next Record ID
             }
 
             // Get the sensor type, sensor number, and event type for the sensor
+            // 获取传感器的传感器类型、传感器编号和事件类型
             sensorType = getSensorTypeFromPath(sensorPath);
             sensorAndLun = getSensorNumberFromPath(sensorPath);
             sensorNum = static_cast<uint8_t>(sensorAndLun);
             if ((generatorID & 0x0001) == 0)
             {
                 // IPMB Address
+                // IPMB 地址
                 generatorID |= sensorAndLun & 0x0300;
             }
             else
             {
                 // system software
+                // 系统软件
                 generatorID |= sensorAndLun >> 8;
             }
             eventType = getSensorEventTypeFromPath(sensorPath);
 
             // Get the event direction
+            // 获取事件方向
             try
             {
                 eventDir = std::stoul(eventDirStr) ? 0 : 1;
@@ -1076,6 +1170,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
         }
 
         // Only keep the eventData bytes that fit in the record
+        // 只保留能放入记录中的 eventData 字节
         std::array<uint8_t, dynamic_sensors::ipmi::sel::systemEventSize>
             eventData{};
         std::copy_n(eventDataBytes.begin(),
@@ -1092,6 +1187,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
         recordType <= dynamic_sensors::ipmi::sel::oemTsEventLast)
     {
         // Get the timestamp
+        // 获取时间戳
         std::tm timeStruct = {};
         std::istringstream entryStream(entryTimestamp);
 
@@ -1103,6 +1199,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
         }
 
         // Only keep the bytes that fit in the record
+        // 只保留能放入记录中的字节
         std::array<uint8_t, dynamic_sensors::ipmi::sel::oemTsEventSize>
             eventData{};
         std::copy_n(eventDataBytes.begin(),
@@ -1116,6 +1213,7 @@ ipmi::RspType<uint16_t,                   // Next Record ID
     if (recordType >= dynamic_sensors::ipmi::sel::oemEventFirst)
     {
         // Only keep the bytes that fit in the record
+        // 只保留能放入记录中的字节
         std::array<uint8_t, dynamic_sensors::ipmi::sel::oemEventSize>
             eventData{};
         std::copy_n(eventDataBytes.begin(),
@@ -1136,12 +1234,19 @@ Unused arguments
   uint8_t eventType, uint8_t eventData1, uint8_t eventData2,
   uint8_t eventData3
 */
+/* 未使用的参数
+ * uint16_t recordID, uint8_t recordType, uint32_t timestamp,
+ * uint16_t generatorID, uint8_t evmRev, uint8_t sensorType, uint8_t sensorNum,
+ * uint8_t eventType, uint8_t eventData1, uint8_t eventData2,
+ * uint8_t eventData3 */
 ipmi::RspType<uint16_t> ipmiStorageAddSELEntry(
     uint16_t, uint8_t, uint32_t, uint16_t, uint8_t, uint8_t, uint8_t, uint8_t,
     uint8_t, uint8_t, uint8_t)
 {
     // Per the IPMI spec, need to cancel any reservation when a SEL entry is
     // added
+    // 根据 IPMI 规范，当添加 SEL 条目时，
+    // 需要取消任何预留（reservation）
     cancelSELReservation();
 
     uint16_t responseID = 0xFFFF;
@@ -1165,12 +1270,15 @@ ipmi::RspType<uint8_t> ipmiStorageClearSEL(
 
     // Erasure status cannot be fetched, so always return erasure status as
     // `erase completed`.
+    // 无法获取擦除状态，因此始终返回擦除状态为
+    // `erase completed`（擦除完成）。
     if (eraseOperation == ipmi::sel::getEraseStatus)
     {
         return ipmi::responseSuccess(ipmi::sel::eraseComplete);
     }
 
     // Check that initiate erase is correct
+    // 检查 initiate erase 是否正确
     if (eraseOperation != ipmi::sel::initiateErase)
     {
         return ipmi::responseInvalidFieldRequest();
@@ -1178,6 +1286,8 @@ ipmi::RspType<uint8_t> ipmiStorageClearSEL(
 
     // Per the IPMI spec, need to cancel any reservation when the SEL is
     // cleared
+    // 根据 IPMI 规范，当清除 SEL 时，
+    // 需要取消任何预留（reservation）
     cancelSELReservation();
 
     boost::system::error_code ec =
@@ -1201,12 +1311,14 @@ std::vector<uint8_t> getType8SDRs(
 
     /* Header */
     // Based on IPMI Spec v2.0 rev 1.1
+    // 基于 IPMI Spec v2.0 rev 1.1
     data.header.recordId = recordId;
     data.header.sdrVersion = SDR_VERSION;
     data.header.recordType = 0x08;
     data.header.recordLength = sizeof(data.key) + sizeof(data.body);
 
     /* Key */
+    /* Key（键） */
     data.key.containerEntityId = entity->second.containerEntityId;
     data.key.containerEntityInstance = entity->second.containerEntityInstance;
     get_sdr::key::setFlags(entity->second.isList, entity->second.isLinked,
@@ -1215,6 +1327,7 @@ std::vector<uint8_t> getType8SDRs(
     data.key.entityInstance1 = entity->second.containedEntities[0].second;
 
     /* Body */
+    /* Body（主体） */
     data.body.entityId2 = entity->second.containedEntities[1].first;
     data.body.entityInstance2 = entity->second.containedEntities[1].second;
     data.body.entityId3 = entity->second.containedEntities[2].first;
@@ -1259,35 +1372,42 @@ void registerStorageFunctions()
     startMatch();
 
     // <Get FRU Inventory Area Info>
+    // <Get FRU Inventory Area Info>（获取 FRU 库存区域信息）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetFruInventoryAreaInfo,
                           ipmi::Privilege::User, ipmiStorageGetFruInvAreaInfo);
     // <READ FRU Data>
+    // <READ FRU Data>（读 FRU 数据）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdReadFruData, ipmi::Privilege::User,
                           ipmiStorageReadFruData);
 
     // <WRITE FRU Data>
+    // <WRITE FRU Data>（写 FRU 数据）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdWriteFruData,
                           ipmi::Privilege::Operator, ipmiStorageWriteFruData);
 
     // <Get SEL Info>
+    // <Get SEL Info>（获取 SEL 信息）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelInfo, ipmi::Privilege::User,
                           ipmiStorageGetSELInfo);
 
     // <Get SEL Entry>
+    // <Get SEL Entry>（获取 SEL 条目）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdGetSelEntry, ipmi::Privilege::User,
                           ipmiStorageGetSELEntry);
 
     // <Add SEL Entry>
+    // <Add SEL Entry>（添加 SEL 条目）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdAddSelEntry,
                           ipmi::Privilege::Operator, ipmiStorageAddSELEntry);
 
     // <Clear SEL>
+    // <Clear SEL>（清除 SEL）
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnStorage,
                           ipmi::storage::cmdClearSel, ipmi::Privilege::Operator,
                           ipmiStorageClearSEL);

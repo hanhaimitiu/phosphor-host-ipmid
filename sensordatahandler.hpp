@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file sensordatahandler.hpp
+ * @brief 传感器数据 handler 的声明。
+ */
+/* @file sensordatahandler.hpp
+ * @brief 传感器数据 handler 的声明。 */
+
 #include "config.h"
 
 #include "sensorhandler.hpp"
@@ -21,6 +28,8 @@
 extern ipmi::sensor::SensorCacheMap sensorCacheMap;
 
 // The signal's message type is 0x04 from DBus spec:
+// https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-messages
+// 根据 DBus 规范，该信号的消息类型为 0x04：
 // https://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-messages
 static constexpr auto msgTypeSignal = 0x04;
 
@@ -54,12 +63,18 @@ using namespace phosphor::logging;
  *  @param[in] cmdData - Input sensor data
  *  @return pair of assertion and deassertion set
  */
+/* @brief 根据输入数据生成断言集合
+ *  @param[in] cmdData - 输入传感器数据
+ *  @return 断言与取消断言集合的 pair */
 AssertionSet getAssertionSet(const SetSensorReadingReq& cmdData);
 
 /** @brief send the message to DBus
  *  @param[in] msg - message to send
  *  @return failure status in IPMI error code
  */
+/* @brief 向 DBus 发送消息
+ *  @param[in] msg - 要发送的消息
+ *  @return 以 IPMI 错误码表示的失败状态 */
 ipmi::Cc updateToDbus(IpmiUpdateData& msg);
 
 namespace get
@@ -88,6 +103,24 @@ namespace get
  *
  *  @return On success return the sensor name for the sensor.
  */
+/* @brief 根据与传感器关联的 D-Bus 属性填充传感器名称。
+ *         在 yaml 的示例条目中，D-bus 属性
+ *         "AttemptsLeft" 的名称即为传感器名称。
+ *         0x07:
+ *            sensorType: 195
+ *            path: /xyz/openbmc_project/state/host0
+ *            sensorReadingType: 0x6F
+ *            serviceInterface: org.freedesktop.DBus.Properties
+ *            readingType: readingAssertion
+ *            sensorNamePattern: nameProperty
+ *            interfaces:
+ *              xyz.openbmc_project.Control.Boot.RebootAttempts:
+ *                AttemptsLeft:
+ *                    Offsets:
+ *                        0xFF:
+ *                          type: uint32_t
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return 成功时返回该传感器的名称。 */
 inline SensorName nameProperty(const Info& sensorInfo)
 {
     return sensorInfo.propertyInterfaces.begin()->second.begin()->first;
@@ -101,6 +134,11 @@ inline SensorName nameProperty(const Info& sensorInfo)
  *
  *  @return On success return the sensor name for the sensor.
  */
+/* @brief 根据与传感器关联的 D-Bus 对象填充传感器名称。
+ *         若对象路径为 /system/chassis/motherboard/dimm0，
+ *         则叶子节点 dimm0 被视为传感器名称。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return 成功时返回该传感器的名称。 */
 inline SensorName nameLeaf(const Info& sensorInfo)
 {
     return sensorInfo.sensorPath.substr(
@@ -118,6 +156,13 @@ inline SensorName nameLeaf(const Info& sensorInfo)
  *
  *  @return On success return the sensor name for the sensor.
  */
+/* @brief 根据与传感器及其属性关联的 D-Bus 对象
+ *         填充传感器名称。
+ *         若对象路径为 /xyz/openbmc_project/inventory/Fan0 且
+ *         属性为 Present，则将叶子节点 Fan0 与该属性
+ *         组合成 Fan0_Present 作为传感器名称。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return 成功时返回该传感器的名称。 */
 inline SensorName nameLeafProperty(const Info& sensorInfo)
 {
     return nameLeaf(sensorInfo) + "_" + nameProperty(sensorInfo);
@@ -132,6 +177,12 @@ inline SensorName nameLeafProperty(const Info& sensorInfo)
  *
  *  @return On success return the sensor name for the sensor.
  */
+/* @brief 根据与传感器关联的 D-Bus 对象填充传感器名称。
+ *         若对象路径为 /system/chassis/motherboard/cpu0/core0，
+ *         则传感器名称为 cpu0_core0。将叶子节点与父节点
+ *         组合起来得到传感器名称。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return 成功时返回该传感器的名称。 */
 SensorName nameParentLeaf(const Info& sensorInfo);
 
 /**
@@ -144,6 +195,12 @@ SensorName nameParentLeaf(const Info& sensorInfo);
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 辅助函数，将 dbus 信息映射为传感器在
+ *         get sensor reading 命令中的断言状态。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] path - Dbus 对象路径。
+ *  @param[in] interface - Dbus 接口。
+ *  @return get sensor reading 命令的响应。 */
 GetSensorResponse mapDbusToAssertion(const Info& sensorInfo,
                                      const InstancePath& path,
                                      const DbusInterface& interface);
@@ -157,6 +214,10 @@ GetSensorResponse mapDbusToAssertion(const Info& sensorInfo,
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射为 Get sensor reading
+ *         命令响应中传感器的断言状态。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return get sensor reading 命令的响应。 */
 GetSensorResponse assertion(const Info& sensorInfo);
 
 /**
@@ -167,6 +228,10 @@ GetSensorResponse assertion(const Info& sensorInfo);
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射到 Get sensor reading
+ *         命令响应中的 reading 字段。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return get sensor reading 命令的响应。 */
 GetSensorResponse eventdata2(const Info& sensorInfo);
 
 /**
@@ -178,6 +243,11 @@ GetSensorResponse eventdata2(const Info& sensorInfo);
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief readingAssertion 是指整个断言状态字段
+ *         直接作为传感器值的情况。
+ *  @tparam T - 与传感器相关的 dbus 属性的类型。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return get sensor reading 命令的响应。 */
 template <typename T>
 GetSensorResponse readingAssertion(const Info& sensorInfo)
 {
@@ -216,6 +286,11 @@ GetSensorResponse readingAssertion(const Info& sensorInfo)
  *
  *  @return Response for get sensor reading command.
  */
+/* @brief 将 Dbus 信息映射到 Get sensor reading
+ *         命令响应中的 reading 字段
+ *  @tparam T - 与传感器相关的 dbus 属性的类型。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return get sensor reading 命令的响应。 */
 template <typename T>
 GetSensorResponse readingData(const Info& sensorInfo)
 {
@@ -230,6 +305,7 @@ GetSensorResponse readingData(const Info& sensorInfo)
 
 #ifdef UPDATE_FUNCTIONAL_ON_FAIL
     // Check the OperationalStatus interface for functional property
+    // 检查 OperationalStatus 接口中的 functional 属性
     if (sensorInfo.propertyInterfaces.begin()->first == SensorValue::interface)
     {
         bool functional = true;
@@ -245,6 +321,8 @@ GetSensorResponse readingData(const Info& sensorInfo)
         {
             // No-op if Functional property could not be found since this
             // check is only valid for Sensor.Value read for hwmonio
+            // 若找不到 Functional 属性则不做任何操作，因为该
+            // 检查仅对 hwmonio 的 Sensor.Value 读取有效。
         }
         if (!functional)
         {
@@ -279,6 +357,7 @@ GetSensorResponse readingData(const Info& sensorInfo)
     constexpr uint8_t sensorUnitsSignedBits = 2 << 6;
     constexpr uint8_t signedDataFormat = 0x80;
     // if sensorUnits1 [7:6] = 10b, sensor is signed
+    // 若 sensorUnits1 [7:6] = 10b，则传感器为有符号数
     int32_t minClamp;
     int32_t maxClamp;
     if ((sensorInfo.sensorUnits1 & sensorUnitsSignedBits) == signedDataFormat)
@@ -366,6 +445,12 @@ GetSensorResponse readingData(const Info& sensorInfo)
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射为 Get sensor reading
+ *         命令响应中传感器的断言状态。
+ *  @param[in] id - 传感器 id
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] msg - 来自 match 回调的 Dbus 消息。
+ *  @return get sensor reading 命令的响应。 */
 std::optional<GetSensorResponse> assertion(uint8_t id, const Info& sensorInfo,
                                            const PropertyMap& properties);
 
@@ -379,6 +464,12 @@ std::optional<GetSensorResponse> assertion(uint8_t id, const Info& sensorInfo,
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射到 Get sensor reading
+ *         命令响应中的 reading 字段。
+ *  @param[in] id - 传感器 id
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] msg - 来自 match 回调的 Dbus 消息。
+ *  @return get sensor reading 命令的响应。 */
 std::optional<GetSensorResponse> eventdata2(uint8_t id, const Info& sensorInfo,
                                             const PropertyMap& properties);
 
@@ -393,6 +484,13 @@ std::optional<GetSensorResponse> eventdata2(uint8_t id, const Info& sensorInfo,
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief readingAssertion 是指整个断言状态字段
+ *         直接作为传感器值的情况。
+ *  @tparam T - 与传感器相关的 dbus 属性的类型。
+ *  @param[in] id - 传感器 id
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] msg - 来自 match 回调的 Dbus 消息。
+ *  @return get sensor reading 命令的响应。 */
 template <typename T>
 std::optional<GetSensorResponse> readingAssertion(
     uint8_t id, const Info& sensorInfo, const PropertyMap& properties)
@@ -427,6 +525,12 @@ std::optional<GetSensorResponse> readingAssertion(
  *
  *  @return Response for get sensor reading command.
  */
+/* @brief 从 match 回调的 dbus 消息中获取传感器读数
+ *  @tparam T - 与传感器相关的 dbus 属性的类型。
+ *  @param[in] id - 传感器 id
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] msg - 来自 match 回调的 Dbus 消息。
+ *  @return get sensor reading 命令的响应。 */
 template <typename T>
 std::optional<GetSensorResponse> readingData(uint8_t id, const Info& sensorInfo,
                                              const PropertyMap& properties)
@@ -474,6 +578,7 @@ std::optional<GetSensorResponse> readingData(uint8_t id, const Info& sensorInfo,
         constexpr uint8_t sensorUnitsSignedBits = 2 << 6;
         constexpr uint8_t signedDataFormat = 0x80;
         // if sensorUnits1 [7:6] = 10b, sensor is signed
+        // 若 sensorUnits1 [7:6] = 10b，则传感器为有符号数
         if ((sensorInfo.sensorUnits1 & sensorUnitsSignedBits) ==
             signedDataFormat)
         {
@@ -576,6 +681,12 @@ namespace set
  *  @param[in] sensorInterface - DBus interface of sensor
  *  @return a dbus message
  */
+/* @brief 为 Dbus 调用构造 DBus 消息
+ *  @param[in] updateInterface - 接口名
+ *  @param[in] sensorPath - 传感器路径
+ *  @param[in] command - 要执行的命令
+ *  @param[in] sensorInterface - 传感器的 DBus 接口
+ *  @return 一条 dbus 消息 */
 IpmiUpdateData makeDbusMsg(const std::string& updateInterface,
                            const std::string& sensorPath,
                            const std::string& command,
@@ -586,6 +697,10 @@ IpmiUpdateData makeDbusMsg(const std::string& updateInterface,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据断言类型的传感器数据更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo);
 
 /** @brief Update d-bus based on a reading assertion
@@ -594,6 +709,11 @@ ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo);
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据读数断言更新 d-bus
+ *  @tparam T - 映射该传感器的 d-bus 属性类型
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 template <typename T>
 ipmi::Cc readingAssertion(const SetSensorReadingReq& cmdData,
                           const Info& sensorInfo)
@@ -619,6 +739,10 @@ ipmi::Cc readingAssertion(const SetSensorReadingReq& cmdData,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return an IPMI error code
  */
+/* @brief 根据离散读数更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 template <typename T>
 ipmi::Cc readingData(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
 {
@@ -648,6 +772,10 @@ ipmi::Cc readingData(const SetSensorReadingReq& cmdData, const Info& sensorInfo)
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据 eventdata 类型的传感器数据更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 ipmi::Cc eventdata(const SetSensorReadingReq& cmdData, const Info& sensorInfo,
                    uint8_t data);
 
@@ -656,6 +784,10 @@ ipmi::Cc eventdata(const SetSensorReadingReq& cmdData, const Info& sensorInfo,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据 eventdata1 类型的传感器数据更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 inline ipmi::Cc eventdata1(const SetSensorReadingReq& cmdData,
                            const Info& sensorInfo)
 {
@@ -667,6 +799,10 @@ inline ipmi::Cc eventdata1(const SetSensorReadingReq& cmdData,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据 eventdata2 类型的传感器数据更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 inline ipmi::Cc eventdata2(const SetSensorReadingReq& cmdData,
                            const Info& sensorInfo)
 {
@@ -678,6 +814,10 @@ inline ipmi::Cc eventdata2(const SetSensorReadingReq& cmdData,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据 eventdata3 类型的传感器数据更新 d-bus
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 inline ipmi::Cc eventdata3(const SetSensorReadingReq& cmdData,
                            const Info& sensorInfo)
 {
@@ -696,6 +836,12 @@ namespace notify
  *  @param[in] sensorInterface - DBus interface of sensor
  *  @return a dbus message
  */
+/* @brief 为 Dbus 调用构造 DBus 消息
+ *  @param[in] updateInterface - 接口名
+ *  @param[in] sensorPath - 传感器路径
+ *  @param[in] command - 要执行的命令
+ *  @param[in] sensorInterface - 传感器的 DBus 接口
+ *  @return 一条 dbus 消息 */
 IpmiUpdateData makeDbusMsg(const std::string& updateInterface,
                            const std::string& sensorPath,
                            const std::string& command,
@@ -707,6 +853,11 @@ IpmiUpdateData makeDbusMsg(const std::string& updateInterface,
  *  @param[in] sensorInfo - sensor d-bus info
  *  @return a IPMI error code
  */
+/* @brief 根据断言类型的传感器数据更新 d-bus
+ *  @param[in] interfaceMap - 传感器接口
+ *  @param[in] cmdData - 输入传感器数据
+ *  @param[in] sensorInfo - 传感器 d-bus 信息
+ *  @return IPMI 错误码 */
 ipmi::Cc assertion(const SetSensorReadingReq& cmdData, const Info& sensorInfo);
 
 } // namespace notify
@@ -727,6 +878,10 @@ namespace get
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射为 Get sensor reading
+ *         命令响应中传感器的断言状态。
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @return get sensor reading 命令的响应。 */
 GetSensorResponse assertion(const Info& sensorInfo);
 
 #else
@@ -741,6 +896,12 @@ GetSensorResponse assertion(const Info& sensorInfo);
  *
  *  @return Response for get sensor reading command.
  */
+/*  @brief 将 Dbus 信息映射为 Get sensor reading
+ *         命令响应中传感器的断言状态。
+ *  @param[in] id - 传感器 id
+ *  @param[in] sensorInfo - 与传感器相关的 Dbus 信息。
+ *  @param[in] msg - 来自 match 回调的 Dbus 消息。
+ *  @return get sensor reading 命令的响应。 */
 std::optional<GetSensorResponse> assertion(uint8_t id, const Info& sensorInfo,
                                            const PropertyMap& properties);
 

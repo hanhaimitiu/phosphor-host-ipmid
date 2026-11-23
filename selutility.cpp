@@ -1,3 +1,10 @@
+
+/**
+ * @file selutility.cpp
+ * @brief SEL（System Event Log）辅助：时间、容量、添加 SEL 条目。
+ */
+/* @file selutility.cpp
+ * @brief SEL（System Event Log）辅助：时间、容量、添加 SEL 条目。 */
 #include "config.h"
 
 #include "selutility.hpp"
@@ -71,6 +78,7 @@ int convert(const std::string_view& str, int base = 10)
 }
 
 // Convert the string to a vector of uint8_t, where the str is formatted as hex
+// 将字符串转换为 uint8_t 向量，其中字符串格式为十六进制
 std::vector<uint8_t> convertVec(const std::string_view& str)
 {
     std::vector<uint8_t> ret;
@@ -85,6 +93,7 @@ std::vector<uint8_t> convertVec(const std::string_view& str)
 }
 
 /** Construct OEM SEL record according to IPMI spec 32.2, 32.3. */
+/* 按照 IPMI 规范 32.2、32.3 节构造 OEM SEL 记录。 */
 void constructOEMSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
                      const AdditionalData& data, GetSELEntryResponse& record)
 {
@@ -99,6 +108,8 @@ void constructOEMSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
         record.event.oemCD.recordType = recordType;
         // The ManufactureID and OEM Defined are packed in the sensor data
         // Fill the 9 bytes of Manufacture ID and oemDefined
+        // ManufactureID 和 OEM Defined 打包在传感器数据中
+        // 填充 Manufacture ID 和 oemDefined 的 9 个字节
         memcpy(&record.event.oemCD.manufacturerID, sensorData.data(),
                std::min(sensorData.size(), static_cast<size_t>(oemCDDataSize)));
     }
@@ -106,6 +117,7 @@ void constructOEMSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
     {
         record.event.oemEF.recordType = recordType;
         // The remaining 13 bytes are the OEM Defined data
+        // 剩余的 13 个字节是 OEM Defined 数据
         memcpy(&record.event.oemEF.oemDefined, sensorData.data(),
                std::min(sensorData.size(), static_cast<size_t>(oemEFDataSize)));
     }
@@ -122,6 +134,7 @@ void constructSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
     }
 
     // Default values when there is no matched sensor
+    // 没有匹配传感器时的默认值
     record.event.eventRecord.sensorType = 0;
     record.event.eventRecord.sensorNum = 0xFF;
     record.event.eventRecord.eventType = 0;
@@ -134,6 +147,7 @@ void constructSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
     if (sensorIter != invSensors.end())
     {
         // There is a matched sensor
+        // 存在匹配的传感器
         record.event.eventRecord.sensorType = sensorIter->second.sensorType;
         record.event.eventRecord.sensorNum = sensorIter->second.sensorID;
 
@@ -156,6 +170,7 @@ void constructSEL(uint8_t recordType, std::chrono::milliseconds timestamp,
     assert(iter != data.end());
     auto sensorData = convertVec(iter->second);
     // The remaining 3 bytes are the sensor data
+    // 剩余的 3 个字节是传感器数据
     memcpy(&record.event.eventRecord.eventData1, sensorData.data(),
            std::min(sensorData.size(), static_cast<size_t>(selDataSize)));
 }
@@ -170,6 +185,7 @@ GetSELEntryResponse prepareSELEntry(
     auto service = ipmi::getService(bus, logEntryIntf, objPath);
 
     // Read all the log entry properties.
+    // 读取所有日志条目属性。
     auto methodCall = bus.new_method_call(service.c_str(), objPath.c_str(),
                                           propIntf, "GetAll");
     methodCall.append(logEntryIntf);
@@ -188,6 +204,7 @@ GetSELEntryResponse prepareSELEntry(
     }
 
     // Read Id from the log entry.
+    // 从日志条目读取 Id。
     static constexpr auto propId = "Id";
     auto iterId = entryData.find(propId);
     if (iterId == entryData.end())
@@ -197,6 +214,7 @@ GetSELEntryResponse prepareSELEntry(
     }
 
     // Read Timestamp from the log entry.
+    // 从日志条目读取 Timestamp。
     static constexpr auto propTimeStamp = "Timestamp";
     auto iterTimeStamp = entryData.find(propTimeStamp);
     if (iterTimeStamp == entryData.end())
@@ -211,6 +229,8 @@ GetSELEntryResponse prepareSELEntry(
 
     // The recordID are with the same offset between different types,
     // so we are safe to set the recordID here
+    // 不同类型之间的 recordID 具有相同的偏移，
+    // 因此在此处设置 recordID 是安全的。
     record.event.eventRecord.recordID =
         static_cast<uint16_t>(std::get<uint32_t>(iterId->second));
 
@@ -219,16 +239,21 @@ GetSELEntryResponse prepareSELEntry(
     {
         // Check if it's a SEL from phosphor-sel-logger which shall contain
         // the record ID, etc
+        // 检查是否为来自 phosphor-sel-logger 的 SEL，其应包含
+        // record ID 等内容。
         const auto& addData = std::get<AdditionalData>(iterId->second);
         auto recordTypeIter = addData.find(strRecordType);
         if (recordTypeIter != addData.end())
         {
             // It is a SEL from phosphor-sel-logger
+            // 这是来自 phosphor-sel-logger 的 SEL
             isFromSELLogger = true;
         }
         else
         {
             // Not a SEL from phosphor-sel-logger, it shall have a valid
+            // invSensor
+            // 不是来自 phosphor-sel-logger 的 SEL，它应有有效的
             // invSensor
             if (iter == invSensors.end())
             {
@@ -241,6 +266,7 @@ GetSELEntryResponse prepareSELEntry(
     if (isFromSELLogger)
     {
         // It is expected to be a custom SEL entry
+        // 应为自定义的 SEL 条目
         const auto& addData = std::get<AdditionalData>(iterId->second);
         auto recordType =
             static_cast<uint8_t>(convert(addData.find(strRecordType)->second));
@@ -270,6 +296,7 @@ GetSELEntryResponse prepareSELEntry(
         record.event.eventRecord.eventData1 = iter->second.eventOffset;
 
         // Read Resolved from the log entry.
+        // 从日志条目读取 Resolved。
         auto iterResolved = entryData.find(propResolved);
         if (iterResolved == entryData.end())
         {
@@ -278,6 +305,7 @@ GetSELEntryResponse prepareSELEntry(
         }
 
         // Evaluate if the event is assertion or deassertion event
+        // 判断事件是断言事件还是取消断言事件
         if (std::get<bool>(iterResolved->second))
         {
             record.event.eventRecord.eventType =
@@ -322,6 +350,9 @@ GetSELEntryResponse convertLogEntrytoSEL(const std::string& objPath)
      * callout association try to match the inventory path to the corresponding
      * IPMI sensor.
      */
+    /* 检查日志条目是否有 callout 关联，若有，
+     * 则尝试将 inventory 路径匹配到相应的
+     * IPMI 传感器。 */
     for (const auto& item : assocs)
     {
         if (std::get<0>(item).compare(CALLOUT_FWD_ASSOCIATION) == 0)
@@ -343,6 +374,8 @@ GetSELEntryResponse convertLogEntrytoSEL(const std::string& objPath)
 
     // If there are no callout associations link the log entry to system event
     // sensor
+    // 若没有 callout 关联，则将日志条目链接到系统事件
+    // 传感器。
     auto iter = invSensors.find(SYSTEM_SENSOR);
     return internal::prepareSELEntry(objPath, iter);
 }
@@ -395,11 +428,13 @@ void readLoggingObjectPaths(ObjectPaths& paths)
     catch (const sdbusplus::exception_t& e)
     {
         // ResourceNotFound is a legacy error, so match by name.
+        // ResourceNotFound 是旧版错误，因此按名称匹配。
         if (std::string_view{ResourceNotFound::errName} != e.name())
         {
             throw;
         }
         // No log entries exist; leave paths empty.
+        // 不存在日志条目；路径留空。
     }
 
     std::sort(paths.begin(), paths.end(),

@@ -1,3 +1,10 @@
+
+/**
+ * @file pack.hpp
+ * @brief 把 C++ 参数打包为 IPMI payload 的实现。
+ */
+/*  @file pack.hpp
+ *  @brief 把 C++ 参数打包为 IPMI payload 的实现。 */
 /**
  * Copyright © 2018 Intel Corporation
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  版权所有 © 2018 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 
 #include <ipmid/message.hpp>
@@ -42,6 +59,7 @@ namespace details
 /**************************************
  * ipmi return type helpers
  **************************************/
+/* ipmi 返回类型辅助函数 */
 
 template <typename NumericType, size_t byteIndex = 0>
 void PackBytes(uint8_t* pointer, const NumericType& i)
@@ -71,6 +89,11 @@ void PackBytesUnaligned(Payload& p, const NumericType& i)
  *
  *  @tparam S - Type of element to pack.
  */
+/* @struct PackSingle
+ * @brief 把单个 C++ 元素打包到 Payload 的实用工具
+ * 用户定义类型应特化该模板
+ * 以实现其功能。
+ * @tparam S - 要打包的元素类型。 */
 template <typename T>
 struct PackSingle
 {
@@ -79,11 +102,15 @@ struct PackSingle
      *  @param[in] p - Payload to pack into.
      *  @param[out] t - The reference to pack item into.
      */
+    /* @brief 执行打包元素的操作。
+     *  @param[in] p - 要打包到的 Payload。
+     *  @param[out] t - 要打包入的项的引用。 */
     static int op(Payload& p, const T& t)
     {
         static_assert(std::is_integral_v<T>,
                       "Attempt to pack a type that has no IPMI pack operation");
         // if not on a byte boundary, must pack values LSbit/LSByte first
+        // 如果不在字节边界上，必须先打包 LSbit/LSByte
         if (p.bitCount)
         {
             PackBytesUnaligned<T>(p, t);
@@ -91,6 +118,7 @@ struct PackSingle
         else
         {
             // copy in bits to vector....
+            // 把位复制进 vector……
             p.raw.resize(p.raw.size() + sizeof(T));
             uint8_t* out = p.raw.data() + p.raw.size() - sizeof(T);
             PackBytes<T>(out, t);
@@ -100,6 +128,7 @@ struct PackSingle
 };
 
 /** @brief Specialization of PackSingle for std::tuple<T> */
+/* @brief PackSingle 对 std::tuple<T> 的特化 */
 template <typename... T>
 struct PackSingle<std::tuple<T...>>
 {
@@ -113,12 +142,15 @@ struct PackSingle<std::tuple<T...>>
 /** @brief Specialization of PackSingle for std::string
  *  represented as a UCSD-Pascal style string
  */
+/* @brief PackSingle 对 std::string 的特化，
+ * 表示为 UCSD-Pascal 风格的字符串 */
 template <>
 struct PackSingle<std::string>
 {
     static int op(Payload& p, const std::string& t)
     {
         // check length first
+        // 先检查长度
         uint8_t len;
         if (t.length() > std::numeric_limits<decltype(len)>::max())
         {
@@ -134,6 +166,7 @@ struct PackSingle<std::string>
 
 /** @brief Specialization of PackSingle for fixed_uint_t types
  */
+/* @brief PackSingle 对 fixed_uint_t 类型的特化 */
 template <bitcount_t N>
 struct PackSingle<fixed_uint_t<N>>
 {
@@ -156,6 +189,7 @@ struct PackSingle<fixed_uint_t<N>>
 };
 
 /** @brief Specialization of PackSingle for bool. */
+/* @brief PackSingle 对 bool 的特化。 */
 template <>
 struct PackSingle<bool>
 {
@@ -167,6 +201,7 @@ struct PackSingle<bool>
 };
 
 /** @brief Specialization of PackSingle for std::bitset<N> */
+/* @brief PackSingle 对 std::bitset<N> 的特化 */
 template <size_t N>
 struct PackSingle<std::bitset<N>>
 {
@@ -187,6 +222,7 @@ struct PackSingle<std::bitset<N>>
 };
 
 /** @brief Specialization of PackSingle for std::optional<T> */
+/* @brief PackSingle 对 std::optional<T> 的特化 */
 template <typename T>
 struct PackSingle<std::optional<T>>
 {
@@ -202,6 +238,7 @@ struct PackSingle<std::optional<T>>
 };
 
 /** @brief Specialization of PackSingle for std::array<T, N> */
+/* @brief PackSingle 对 std::array<T, N> 的特化 */
 template <typename T, size_t N>
 struct PackSingle<std::array<T, N>>
 {
@@ -221,6 +258,7 @@ struct PackSingle<std::array<T, N>>
 };
 
 /** @brief Specialization of PackSingle for std::vector<T> */
+/* @brief PackSingle 对 std::vector<T> 的特化 */
 template <typename T>
 struct PackSingle<std::vector<T>>
 {
@@ -240,6 +278,7 @@ struct PackSingle<std::vector<T>>
 };
 
 /** @brief Specialization of PackSingle for std::vector<uint8_t> */
+/* @brief PackSingle 对 std::vector<uint8_t> 的特化 */
 template <>
 struct PackSingle<std::vector<uint8_t>>
 {
@@ -256,6 +295,7 @@ struct PackSingle<std::vector<uint8_t>>
 };
 
 /** @brief Specialization of PackSingle for SecureBuffer */
+/* @brief PackSingle 对 SecureBuffer 的特化 */
 template <>
 struct PackSingle<SecureBuffer>
 {
@@ -272,6 +312,7 @@ struct PackSingle<SecureBuffer>
 };
 
 /** @brief Specialization of PackSingle for std::span<const uint8_t> */
+/* @brief PackSingle 对 std::span<const uint8_t> 的特化 */
 template <>
 struct PackSingle<std::span<const uint8_t>>
 {
@@ -288,6 +329,7 @@ struct PackSingle<std::span<const uint8_t>>
 };
 
 /** @brief Specialization of PackSingle for std::string_view */
+/* @brief PackSingle 对 std::string_view 的特化 */
 template <>
 struct PackSingle<std::string_view>
 {
@@ -304,6 +346,7 @@ struct PackSingle<std::string_view>
 };
 
 /** @brief Specialization of PackSingle for std::variant<T, N> */
+/* @brief PackSingle 对 std::variant<T, N> 的特化 */
 template <typename... T>
 struct PackSingle<std::variant<T...>>
 {
@@ -318,6 +361,7 @@ struct PackSingle<std::variant<T...>>
 };
 
 /** @brief Specialization of PackSingle for Payload */
+/* @brief PackSingle 对 Payload 的特化 */
 template <>
 struct PackSingle<Payload>
 {

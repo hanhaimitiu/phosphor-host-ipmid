@@ -1,3 +1,10 @@
+
+/**
+ * @file utility.hpp
+ * @brief ipmid 内部小工具。
+ */
+/*  @file utility.hpp
+ *  @brief ipmid 内部小工具。 */
 /**
  * Copyright © 2018 Intel Corporation
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  版权所有 © 2018 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 #include <boost/asio/spawn.hpp>
 #include <boost/callable_traits.hpp>
@@ -29,6 +46,7 @@ namespace ipmi
 {
 
 // forward declare Context and Request for NonIpmiArgsCount
+// 为 NonIpmiArgsCount 前向声明 Context 和 Request
 struct Context;
 namespace message
 {
@@ -43,6 +61,8 @@ namespace utility
  *
  * Given a tuple of type <T1, ...TN, TN+1, ...>, provide type = tuple<TN+1,...>
  */
+/* @brief 从 tuple 中提取第 N 个之后参数的工具模板
+ * 给定类型 <T1, ...TN, TN+1, ...> 的 tuple，提供 type = tuple<TN+1,...> */
 template <std::size_t N, typename FirstArg, typename... Rest>
 struct StripFirstArgs;
 
@@ -67,6 +87,8 @@ struct StripFirstArgs<N, std::tuple<>>
  *
  * Given a tuple of type <T1, T2,...>, provide type = tuple<T2,...>
  */
+/* @brief 从 tuple 中提取剩余参数的工具模板
+ * 给定类型 <T1, T2,...> 的 tuple，提供 type = tuple<T2,...> */
 template <typename T>
 using StripFirstArg = StripFirstArgs<1, T>;
 
@@ -75,6 +97,8 @@ using StripFirstArg = StripFirstArgs<1, T>;
  *
  * Given a tuple, count the args after the first special args
  */
+/* @brief 计算非特殊参数个数的工具模板
+ * 给定一个 tuple，统计第一个特殊参数之后的参数个数 */
 template <typename FirstArg, typename... Rest>
 struct NonIpmiArgsCount;
 
@@ -112,6 +136,8 @@ struct NonIpmiArgsCount<std::tuple<FirstArg, OtherArgs...>>
  *
  * Given a tuple, provide the type of the first element
  */
+/* @brief 找出第一个参数类型的工具模板
+ * 给定一个 tuple，提供第一个元素的类型 */
 template <typename T>
 struct GetFirstArg
 {
@@ -129,6 +155,8 @@ struct GetFirstArg<std::tuple<FirstArg, Rest...>>
  *
  * Given a tuple, provide the type of the first element
  */
+/* @brief 去除类型中 const 和引用的工具模板
+ * 给定一个 tuple，提供第一个元素的类型 */
 template <typename... Args>
 struct DecayTuple;
 
@@ -143,6 +171,9 @@ struct DecayTuple<std::tuple<Args...>>
  *  @tparam Tbase - The base type expected.
  *  @tparam T - The type to convert.
  */
+/* @brief 当 is_same<Tbase,T> 时把 T[N] 转换为 T*
+ * @tparam Tbase - 期望的基类型。
+ * @tparam T - 要转换的类型。 */
 template <typename Tbase, typename T>
 using ArrayToPtr_t = typename std::conditional_t<
     std::is_array<T>::value,
@@ -160,6 +191,13 @@ using ArrayToPtr_t = typename std::conditional_t<
  *  2. Remove 'const' and 'volatile'.
  *  3. Convert 'char[N]' to 'char*'.
  */
+/* @brief 对类型的子成员进行向下转换（downcast）。
+ * 这允许把 std::tuple 和 std::pair 成员向下转换为
+ * 其非 const、非引用版本，以减少
+ * 模板特化中的重复。
+ *  1. 去除引用。
+ *  2. 去除 'const' 和 'volatile'。
+ *  3. 把 'char[N]' 转换为 'char*'。 */
 template <typename T>
 struct DowncastMembers
 {
@@ -191,6 +229,12 @@ using DowncastMembers_t = typename DowncastMembers<T>::type;
  *  2. Remove 'const' and 'volatile'.
  *  3. Convert 'char[N]' to 'char*'.
  */
+/* @brief 为 'TypeId' 转换目的把某些 C++ 类型转换为其他类型。
+ * 相似的 C++ 类型具有相同的 dbus type-id，因此对它们进行 "downcast"
+ * 以减少 TypeId 模板特化中的重复。
+ *  1. 去除引用。
+ *  2. 去除 'const' 和 'volatile'。
+ *  3. 把 'char[N]' 转换为 'char*'。 */
 template <typename T>
 struct TypeIdDowncast
 {
@@ -204,6 +248,7 @@ using TypeIdDowncast_t = typename TypeIdDowncast<T>::type;
 /** @brief Detect if a type is a tuple
  *
  */
+/* @brief 检测某个类型是否为 tuple */
 template <typename>
 struct is_tuple : std::false_type
 {};
@@ -214,6 +259,7 @@ struct is_tuple<std::tuple<T...>> : std::true_type
 
 /** @brief used for static_assert in a constexpr-if else statement
  */
+/* @brief 用于 constexpr-if else 语句中的 static_assert */
 template <typename T>
 struct dependent_false : std::false_type
 {};

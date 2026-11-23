@@ -1,3 +1,10 @@
+
+/**
+ * @file cipher_mgmt.cpp
+ * @brief Cipher Suite 管理：密码套件配置的读写。
+ */
+/*  @file cipher_mgmt.cpp
+ *  @brief Cipher Suite 管理：密码套件配置的读写。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 #include "cipher_mgmt.hpp"
 
 #include <fcntl.h>
@@ -55,12 +75,15 @@ void CipherConfig::loadCSPrivilegesToMap()
     else
     {
         // read default privileges
+        // 读取默认权限
         Json data = readCSPrivilegeLevels(cipherSuiteDefaultPrivFileName);
 
         // load default privileges
+        // 加载默认权限
         updateCSPrivilegesMap(data);
 
         // check for user-saved privileges
+        // 检查用户保存的权限
         if (fs::exists(cipherSuitePrivFileName))
         {
             data = readCSPrivilegeLevels(cipherSuitePrivFileName);
@@ -68,6 +91,8 @@ void CipherConfig::loadCSPrivilegesToMap()
             {
                 // update map with user-saved privileges by merging (overriding)
                 // values from the defaults
+                // 通过合并（覆盖）默认值中的值，
+                // 用用户保存的权限更新 map
                 updateCSPrivilegesMap(data);
             }
         }

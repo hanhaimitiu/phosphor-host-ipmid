@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 // Watch for correct singleton behavior.
+// 关注单例模式是否正确。
 static oem::Router* singletonUnderTest;
 
 static ipmid_callback_t wildHandler;
@@ -15,6 +16,7 @@ static ipmid_callback_t wildHandler;
 static ipmi_netfn_t lastNetFunction;
 
 // Fake ipmi_register_callback() for this test.
+// 为本测试伪造 ipmi_register_callback()。
 void ipmi_register_callback(ipmi_netfn_t netfn, ipmi_cmd_t cmd,
                             ipmi_context_t context, ipmid_callback_t cb,
                             ipmi_cmd_privilege_t priv)
@@ -64,10 +66,12 @@ void RegisterTwoWays(ipmi_cmd_t* nextCmd)
     Handler f = [](ipmi_cmd_t cmd, [[maybe_unused]] const uint8_t* reqBuf,
                    uint8_t* replyBuf, size_t* dataLen) {
         // Check inputs
+        // 检查输入
         EXPECT_EQ(0x78, cmd);
         EXPECT_EQ(0, *dataLen); // Excludes OEN
 
         // Generate reply.
+        // 生成应答。
         *dataLen = 2;
         std::memcpy(replyBuf, replyPlain + 3, *dataLen);
         return 0;
@@ -78,6 +82,7 @@ void RegisterTwoWays(ipmi_cmd_t* nextCmd)
     Handler g = [nextCmd](ipmi_cmd_t cmd, const uint8_t* reqBuf,
                           [[maybe_unused]] uint8_t* replyBuf, size_t* dataLen) {
         // Check inputs
+        // 检查输入
         EXPECT_EQ(*nextCmd, cmd);
         EXPECT_EQ(2, *dataLen); // Excludes OEN
         if (2 != *dataLen)
@@ -88,6 +93,7 @@ void RegisterTwoWays(ipmi_cmd_t* nextCmd)
         EXPECT_EQ(msgPlus2[4], reqBuf[1]);
 
         // Generate reply.
+        // 生成应答。
         *dataLen = 0;
         return 0;
     };
@@ -134,6 +140,7 @@ TEST(OemRouterTest, WildCardMatchesTwoRandomCodes)
     RegisterTwoWays(&cmd);
 
     // Check two random command codes.
+    // 检查两个随机的命令码。
     dataLen = 5;
     cmd = 0x89;
     EXPECT_EQ(0, wildHandler(ipmi::netFnOem, cmd, msgPlus2, reply, &dataLen,
@@ -156,18 +163,21 @@ TEST(OemRouterTest, CommandsAreRejectedIfInvalid)
     RegisterTwoWays(&cmd);
 
     // Message too short to include whole OEN?
+    // 消息太短，不足以包含完整的 OEN？
     dataLen = 2;
     EXPECT_EQ(ipmi::ccReqDataLenInvalid,
               wildHandler(ipmi::netFnOem, 0x78, msgPlain, reply, &dataLen,
                           nullptr));
 
     // Wrong specific command?
+    // 具体的命令码错误？
     dataLen = 3;
     EXPECT_EQ(ipmi::ccInvalidCommand,
               wildHandler(ipmi::netFnOem, 0x89, msgPlain, reply, &dataLen,
                           nullptr));
 
     // Wrong OEN?
+    // OEN 错误？
     dataLen = 3;
     EXPECT_EQ(ipmi::ccInvalidCommand,
               wildHandler(ipmi::netFnOem, 0x78, msgBadOen, reply, &dataLen,

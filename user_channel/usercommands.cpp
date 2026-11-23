@@ -1,3 +1,10 @@
+
+/**
+ * @file usercommands.cpp
+ * @brief User IPMI 命令（Set User Name/Privilege 等）。
+ */
+/*  @file usercommands.cpp
+ *  @brief User IPMI 命令（Set User Name/Privilege 等）。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 
 #include "usercommands.hpp"
 
@@ -36,6 +56,7 @@ static constexpr uint8_t userIdEnabledViaSetPassword = 0x01;
 static constexpr uint8_t userIdDisabledViaSetPassword = 0x02;
 
 /** IPMI set password return codes (refer spec sec 22.30) */
+/* IPMI set password 返回码（参见规范 22.30 节） */
 constexpr Cc ccPasswdFailMismatch = 0x80;
 
 static inline auto responsePasswdFailMismatch()
@@ -58,6 +79,19 @@ static inline auto responsePasswdFailMismatch()
  *
  *  @returns ipmi completion code
  */
+/* @brief 实现 set user access 命令
+ *   @param ctx - IPMI 上下文指针（针对通道）
+ *   @param channel - 通道号
+ *   @param ipmiEnabled - 表示 IPMI  messaging 状态
+ *   @param linkAuthEnabled - 表示链路认证状态
+ *   @param accessCallback - 表示回调状态
+ *   @param bitsUpdate - 表示更新请求
+ *   @param userId - 用户 ID
+ *   @param reserved1 - 跳过 2 个比特
+ *   @param privilege - 用户权限
+ *   @param reserved2 - 跳过 4 个比特
+ *   @param sessionLimit - 可选 - 目前未使用
+ *   @returns IPMI 完成码 */
 ipmi::RspType<> ipmiSetUserAccess(
     ipmi::Context::ptr ctx, uint4_t channel, uint1_t ipmiEnabled,
     uint1_t linkAuthEnabled, uint1_t accessCallback, uint1_t bitsUpdate,
@@ -128,6 +162,24 @@ ipmi::RspType<> ipmiSetUserAccess(
  *   - accessCallback - callback state
  *   - reserved - skip 1 bit
  */
+/* @brief 实现 get user access 命令
+ *   @param ctx - IPMI 上下文指针（针对通道）
+ *   @param channel - 通道号
+ *   @param reserved1 - 跳过 4 个比特
+ *   @param userId - 用户 ID
+ *   @param reserved2 - 跳过 2 个比特
+ *   @returns IPMI 完成码以及响应数据
+ *    - maxChUsers - 通道最大用户数
+ *    - reserved1 - 跳过 2 个比特
+ *    - enabledUsers - 已启用用户数
+ *    - enabledStatus - 启用状态
+ *    - fixedUsers - 固定用户数
+ *    - reserved2 - 跳过 2 个比特
+ *    - privilege - 用户权限
+ *    - ipmiEnabled - IPMI messaging 状态
+ *    - linkAuthEnabled - 链路认证状态
+ *    - accessCallback - 回调状态
+ *    - reserved - 跳过 1 个比特 */
 ipmi::RspType<uint6_t, // max channel users
               uint2_t, // reserved1
 
@@ -216,6 +268,12 @@ ipmi::RspType<uint6_t, // max channel users
 
  *  @returns ipmi response
  */
+/* @brief 实现 set user name 命令
+ *   @param[in] ctx - ipmi 命令上下文
+ *   @param[in] userId - 6 位用户 ID
+ *   @param[in] reserved - 2 位保留
+ *   @param[in] name - 16 字节的用户名数组
+ *   @returns ipmi 响应 */
 ipmi::RspType<> ipmiSetUserName(
     [[maybe_unused]] ipmi::Context::ptr ctx, uint6_t id, uint2_t reserved,
     const std::array<uint8_t, ipmi::ipmiMaxUserName>& name)
@@ -247,6 +305,11 @@ ipmi::RspType<> ipmiSetUserName(
 
  *  @returns ipmi response with 16-byte username
  */
+/* @brief 实现 获取用户名 命令
+ *   @param[in] ctx - ipmi 命令上下文
+ *   @param[in] userId - 6 位用户 ID
+ *   @param[in] reserved - 2 位保留
+ *   @returns 带 16 字节用户名的 ipmi 响应 */
 ipmi::RspType<std::array<uint8_t, ipmi::ipmiMaxUserName>> // user name
     ipmiGetUserName([[maybe_unused]] ipmi::Context::ptr ctx, uint6_t id,
                     uint2_t reserved)
@@ -265,6 +328,7 @@ ipmi::RspType<std::array<uint8_t, ipmi::ipmiMaxUserName>> // user name
         return ipmi::responseParmOutOfRange();
     }
     // copy the std::string into a fixed array
+    // 将 std::string 拷贝到固定大小的数组
     if (userName.size() > ipmi::ipmiMaxUserName)
     {
         return ipmi::responseUnspecifiedError();
@@ -282,6 +346,11 @@ ipmi::RspType<std::array<uint8_t, ipmi::ipmiMaxUserName>> // user name
 
  *  @returns ipmi response with 16-byte username
  */
+/* @brief 实现 设置用户密码 命令
+ *   @param[in] ctx - ipmi 命令上下文
+ *   @param[in] userId - 6 位用户 ID
+ *   @param[in] reserved - 2 位保留
+ *   @returns 带 16 字节用户名的 ipmi 响应 */
 ipmi::RspType<> // user name
     ipmiSetUserPassword([[maybe_unused]] ipmi::Context::ptr ctx, uint6_t id,
                         bool reserved1, bool pwLen20, uint2_t operation,
@@ -300,6 +369,8 @@ ipmi::RspType<> // user name
 
     // If set / test password operation then password size has to be 16 or 20
     // bytes based on the password size bit
+    // 如果是设置 / 测试密码操作，根据密码长度位，密码长度必须为 16 或 20
+    // 字节
     if (((operation == opSetPassword) || (operation == opTestPassword)) &&
         ((pwLen20 && (userPassword.size() != maxIpmi20PasswordSize)) ||
          (!pwLen20 && (userPassword.size() != maxIpmi15PasswordSize))))
@@ -322,6 +393,7 @@ ipmi::RspType<> // user name
     if (operation == opSetPassword)
     {
         // turn the non-nul terminated SecureBuffer into a SecureString
+        // 将非 nul 结尾的 SecureBuffer 转换为 SecureString
         SecureString password(
             reinterpret_cast<const char*>(userPassword.data()), passwordLength);
         ipmi::Cc res = ipmiUserSetUserPassword(userId, password.data());
@@ -337,6 +409,7 @@ ipmi::RspType<> // user name
     {
         SecureString password = ipmiUserGetPassword(userName);
         // extend with zeros, if needed
+        // 如有需要，用零扩展
         if (password.size() < passwordLength)
         {
             password.resize(passwordLength, '\0');
@@ -346,6 +419,9 @@ ipmi::RspType<> // user name
         // constant time string compare: always compare exactly as many bytes
         // as the length of the input, resizing the actual password to match,
         // maintaining a knowledge if the sizes differed originally
+        // 常量时间字符串比较：始终比较与输入长度完全相同的字节数，
+        // 必要时调整实际密码的大小以匹配，
+        // 同时记录原始长度是否不同
         static const std::array<char, maxIpmi20PasswordSize> empty = {'\0'};
         size_t cmpLen = testPassword.size();
         bool pwLenDiffers = password.size() != cmpLen;
@@ -397,6 +473,30 @@ ipmi::RspType<> // user name
  *   - oemID - OEM IANA of any OEM auth support
  *   - oemAuxiliary - OEM data for auth
  */
+/* @brief 实现 get channel authentication 命令
+ *   @param ctx - IPMI 上下文指针（针对通道）
+ *   @param extData - 获取 IPMI 2.0 扩展数据
+ *   @param reserved1 - 跳过 3 个比特
+ *   @param chNum - 要获取信息的通道号
+ *   @param reserved2 - 跳过 4 个比特
+ *   @param privLevel - 请求的权限级别
+ *   @returns ipmi 完成码以及响应数据
+ *    - 通道号
+ *    - rmcpAuthTypes - RMCP 认证类型（IPMI 1.5）
+ *    - reserved1
+ *    - extDataSupport - 支持 IPMI 2.0 扩展时为 true
+ *    - anonymousLogin - 启用匿名登录时为 true
+ *    - nullUsers - 启用空用户名时为 true
+ *    - nonNullUsers - 启用非空用户名时为 true
+ *    - userAuth - 启用用户认证时为 false
+ *    - perMessageAuth - 启用逐消息认证时为 false
+ *    - KGStatus - 认证需要 Kg 时为 true
+ *    - reserved2
+ *    - rmcp - 支持 RMCP（IPMI 1.5）连接
+ *    - rmcpp - 支持 RMCP+（IPMI 2.0）连接
+ *    - reserved3
+ *    - oemID - 支持 OEM 认证的 OEM IANA
+ *    - oemAuxiliary - 用于认证的 OEM 数据 */
 ipmi::RspType<uint8_t,  // channel number
               uint6_t,  // rmcpAuthTypes
               bool,     // reserved1
@@ -480,6 +580,24 @@ ipmi::RspType<uint8_t,  // channel number
  *
  *  @returns IPMI completion code
  */
+/* @brief 实现 set user payload access 命令。
+ *   @param ctx - IPMI 上下文指针（针对通道）
+ *   @param channel - 通道号（4 位）
+ *   @param reserved1 - 跳过 4 个比特
+ *   @param userId - 用户 ID（6 位）
+ *   @param operation - 访问 启用 / 禁用。（2 位）
+ *   @param stdPayload0 - IPMI - 保留。（1 位）
+ *   @param stdPayload1 - SOL。（1 位）
+ *   @param stdPayload2 -                  （1 位）
+ *   @param stdPayload3 -                  （1 位）
+ *   @param stdPayload4 -                  （1 位）
+ *   @param stdPayload5 -                  （1 位）
+ *   @param stdPayload6 -                  （1 位）
+ *   @param stdPayload7 -                  （1 位）
+ *   @param stdPayloadEnables2Reserved -   （8 位）
+ *   @param oemPayload - OEM payload 启用位（8 位）
+ *   @param oemPayloadEnables2Reserved -   （8 位）
+ *   @returns IPMI 完成码 */
 ipmi::RspType<> ipmiSetUserPayloadAccess(
     ipmi::Context::ptr ctx,
 
@@ -500,6 +618,7 @@ ipmi::RspType<> ipmiSetUserPayloadAccess(
     auto chNum =
         convertCurrentChannelNum(static_cast<uint8_t>(channel), ctx->channel);
     // Validate the reserved args. Only SOL payload is supported as on date.
+    // 校验保留参数。目前仅支持 SOL payload。
     if (reserved || stdPayload0ipmiReserved || stdPayload2 || stdPayload3 ||
         stdPayload4 || stdPayload5 || stdPayload6 || stdPayload7 ||
         stdPayloadEnables2Reserved || oemPayloadEnables2Reserved ||
@@ -564,6 +683,33 @@ ipmi::RspType<> ipmiSetUserPayloadAccess(
 
  *  - oemPayloadEnables2Reserved - Reserved
  */
+/* @brief 实现 get user payload access 命令
+ *   该命令返回用户 payload 使能设置的信息，
+ *   这些设置由 'Set User Payload Access' 命令设定。
+ *   @param ctx - IPMI 上下文指针（针对通道）
+ *   @param channel - 通道号
+ *   @param reserved1 - 跳过 4 个比特
+ *   @param userId - 用户 ID
+ *   @param reserved2 - 跳过 2 个比特
+ *   @returns IPMI 完成码以及响应数据
+ *    - stdPayload0ipmiReserved - IPMI payload（保留）。
+ *    - stdPayload1SOL - SOL payload
+ *    - stdPayload2
+ *    - stdPayload3
+ *    - stdPayload4
+ *    - stdPayload5
+ *    - stdPayload6
+ *    - stdPayload7
+ *    - stdPayloadEnables2Reserved - 保留。
+ *    - oemPayload0
+ *    - oemPayload1
+ *    - oemPayload2
+ *    - oemPayload3
+ *    - oemPayload4
+ *    - oemPayload5
+ *    - oemPayload6
+ *    - oemPayload7
+ *   - oemPayloadEnables2Reserved - 保留 */
 ipmi::RspType<bool,    // stdPayload0ipmiReserved
               bool,    // stdPayload1SOL
               bool,    // stdPayload2

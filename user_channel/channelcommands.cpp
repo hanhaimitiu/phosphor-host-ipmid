@@ -1,3 +1,10 @@
+
+/**
+ * @file channelcommands.cpp
+ * @brief Channel IPMI 命令（Get Channel Info/Access 等）。
+ */
+/*  @file channelcommands.cpp
+ *  @brief Channel IPMI 命令（Get Channel Info/Access 等）。 */
 /*
 // Copyright (c) 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/*  // Copyright (c) 2018 Intel Corporation
+ *  //
+ *  // Licensed under the Apache License, Version 2.0 (the "License");
+ *  // you may not use this file except in compliance with the License.
+ *  // You may obtain a copy of the License at
+ *  //
+ *  //      http://www.apache.org/licenses/LICENSE-2.0
+ *  //
+ *  // Unless required by applicable law or agreed to in writing, software
+ *  // distributed under the License is distributed on an "AS IS" BASIS,
+ *  // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  // See the License for the specific language governing permissions and
+ *  // limitations under the License. */
 
 #include "channel_layer.hpp"
 
@@ -46,6 +66,19 @@ static inline auto responsePayloadTypeNotSupported()
  *
  *  @ returns IPMI completion code
  **/
+/* @brief 实现 set channel access 命令
+ *  @ param ctx - 上下文指针
+ *  @ param channel - 通道号
+ *  @ param reserved - 跳过 4 个比特
+ *  @ param accessMode - IPMI 消息的访问模式
+ *  @ param usrAuth - 用户级认证（启用/禁用）
+ *  @ param msgAuth - 逐消息认证（启用/禁用）
+ *  @ param alertDisabled - PEF 告警（启用/禁用）
+ *  @ param chanAccess - 通道访问
+ *  @ param channelPrivLimit - 通道权限上限
+ *  @ param reserved - 跳过 3 个比特
+ *  @ param channelPrivMode - 通道权限模式
+ *  @ returns IPMI 完成码 */
 RspType<> ipmiSetChannelAccess(
     Context::ptr ctx, uint4_t channel, uint4_t reserved1, uint3_t accessMode,
     bool usrAuth, bool msgAuth, bool alertDisabled, uint2_t chanAccess,
@@ -75,6 +108,7 @@ RspType<> ipmiSetChannelAccess(
     Cc compCode;
 
     // cannot static cast directly from uint2_t to enum; must go via int
+    // 不能直接从 uint2_t 静态转换为 enum；必须先转成 int
     uint8_t channelAccessAction = static_cast<uint8_t>(chanAccess);
     switch (static_cast<EChannelActionType>(channelAccessAction))
     {
@@ -117,6 +151,7 @@ RspType<> ipmiSetChannelAccess(
     }
 
     // cannot static cast directly from uint2_t to enum; must go via int
+    // 不能直接从 uint2_t 静态转换为 enum；必须先转成 int
     uint8_t channelPrivAction = static_cast<uint8_t>(channelPrivMode);
     switch (static_cast<EChannelActionType>(channelPrivAction))
     {
@@ -176,6 +211,20 @@ RspType<> ipmiSetChannelAccess(
  *  - privLimit - channel privilege limit
  *  - reserved - skip 4 bits
  * */
+/* @brief 实现 get channel access 命令
+ *  @ param ctx - 上下文指针
+ *  @ param channel - 通道号
+ *  @ param reserved1 - 跳过 4 个比特
+ *  @ param reserved2 - 跳过 6 个比特
+ *  @ param accessMode - 获取访问模式
+ *  @returns IPMI 完成码以及响应数据
+ *  - accessMode - 获取访问模式
+ *  - usrAuthDisabled - 用户级认证状态
+ *  - msgAuthDisabled - 消息级认证状态
+ *  - alertDisabled - 告警状态
+ *  - reserved - 跳过 2 个比特
+ *  - privLimit - 通道权限上限
+ *  - reserved - 跳过 4 个比特 */
 ipmi::RspType<uint3_t, // access mode,
               bool,    // user authentication status,
               bool,    // message authentication status,
@@ -254,6 +303,18 @@ ipmi::RspType<uint3_t, // access mode,
  *  - vendorId - vendor for this channel protocol (IPMI - 7154)
  *  - auxChInfo - auxiliary info for channel
  * */
+/* @brief 实现 get channel info 命令
+ *  @ param ctx - 上下文指针
+ *  @ param channel - 通道号
+ *  @ param reserved - 跳过 4 个比特
+ *  @returns IPMI 完成码以及响应数据
+ *  - chNum - 本次请求的通道号
+ *  - mediumType - 参见表 6-3 Channel Medium Type Numbers
+ *  - protocolType - 表 6-2 Channel Protocol Type Numbers
+ *  - activeSessionCount - 活动会话数
+ *  - sessionType - 通道对会话的支持情况
+ *  - vendorId - 该通道协议的厂商（IPMI - 7154）
+ *  - auxChInfo - 通道的辅助信息 */
 RspType<uint4_t,  // chNum
         uint4_t,  // reserved
         uint7_t,  // mediumType
@@ -300,6 +361,7 @@ RspType<uint4_t,  // chNum
     uint2_t sessionType = chInfo.sessionSupported;
     uint6_t activeSessionCount = getChannelActiveSessions(chNum);
     // IPMI Spec: The IPMI Enterprise Number is: 7154 (decimal)
+    // IPMI 规范：IPMI 企业号为 7154（十进制）
     constexpr uint24_t vendorId = 7154;
     constexpr uint16_t auxChInfo = 0;
 
@@ -334,6 +396,15 @@ constexpr uint16_t sessionPayloadBit(PayloadType p)
  *  - OEMPayloadType - bitmask of supported OEM payload types
  *  - reserved - 2 bytes of 0
  **/
+/* @brief 实现 get channel payload support 命令
+ *  @ param ctx - ipmi 上下文指针
+ *  @ param chNum - 通道号
+ *  @ param reserved - 跳过 4 个比特
+ *  @ returns IPMI 完成码以及响应数据
+ *  - stdPayloadType - 支持的标准 payload 类型位掩码
+ *  - sessSetupPayloadType - 支持的会话建立 payload 类型位掩码
+ *  - OEMPayloadType - 支持的 OEM payload 类型位掩码
+ *  - reserved - 2 字节的 0 */
 RspType<uint16_t, // stdPayloadType
         uint16_t, // sessSetupPayloadType
         uint16_t, // OEMPayloadType
@@ -352,6 +423,7 @@ RspType<uint16_t, // stdPayloadType
     }
 
     // Session support is available in active LAN channels.
+    // 会话支持仅在处于活动状态的 LAN 通道上可用。
     if (getChannelSessionSupport(chNum) == EChannelSessSupported::none)
     {
         lg2::debug("Get channel payload - No support on channel");
@@ -381,6 +453,13 @@ RspType<uint16_t, // stdPayloadType
  *  @returns IPMI completion code plus response data
  *   - formatVersion - BCD encoded format version info
  */
+/* @brief 实现 get channel payload version 命令
+ *  @param ctx - IPMI 上下文指针（针对通道）
+ *  @param chNum - 要获取信息的通道号
+ *  @param reserved - 跳过 4 个比特
+ *  @param payloadTypeNum - 要获取的 payload 类型信息
+ *  @returns IPMI 完成码以及响应数据
+ *   - formatVersion - BCD 编码的格式版本信息 */
 
 RspType<uint8_t> // formatVersion
     ipmiGetChannelPayloadVersion(Context::ptr ctx, uint4_t chNum,
@@ -409,6 +488,7 @@ RspType<uint8_t> // formatVersion
     }
 
     // BCD encoded version representation - 1.0
+    // BCD 编码的版本表示 - 1.0
     constexpr uint8_t formatVersion = 0x10;
 
     return responseSuccess(formatVersion);

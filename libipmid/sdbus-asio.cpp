@@ -1,3 +1,10 @@
+
+/**
+ * @file sdbus-asio.cpp
+ * @brief 供插件使用的 sdbusplus-asio 连接初始化。
+ */
+/*  @file sdbus-asio.cpp
+ *  @brief 供插件使用的 sdbusplus-asio 连接初始化。 */
 #include <boost/asio/io_context.hpp>
 #include <sdbusplus/asio/connection.hpp>
 

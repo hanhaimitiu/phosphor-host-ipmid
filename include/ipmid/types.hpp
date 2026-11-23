@@ -1,5 +1,12 @@
 #pragma once
 
+/**
+ * @file types.hpp
+ * @brief ipmid 内部公共类型（ProviderCallback 等）。
+ */
+/*  @file types.hpp
+ *  @brief ipmid 内部公共类型（ProviderCallback 等）。 */
+
 #include <openssl/crypto.h>
 #include <stdint.h>
 
@@ -47,6 +54,8 @@ using Offset = uint8_t;
  * @enum SkipAssertion
  * Matching value for skipping the update
  */
+/* @enum SkipAssertion
+ * 用于跳过更新的匹配值 */
 enum class SkipAssertion
 {
     NONE,     // No skip defined
@@ -65,6 +74,8 @@ struct Values
  * @enum PreReqValues
  * Pre-req conditions for a property.
  */
+/* @enum PreReqValues
+ * 某个属性的前置条件（Pre-req）。 */
 struct PreReqValues
 {
     Value assert;   // Value in case of assert.
@@ -78,6 +89,8 @@ using PreReqOffsetValueMap = std::map<Offset, PreReqValues>;
  *
  * IPMI Request data for Set Sensor Reading and Event Status Command
  */
+/* @struct SetSensorReadingReq
+ * Set Sensor Reading and Event Status 命令的 IPMI 请求数据 */
 struct SetSensorReadingReq
 {
     uint8_t number;
@@ -97,6 +110,8 @@ struct SetSensorReadingReq
  *
  * IPMI response data for Get Sensor Reading command.
  */
+/* @struct GetReadingResponse
+ * Get Sensor Reading 命令的 IPMI 响应数据。 */
 struct GetReadingResponse
 {
     uint8_t reading;          //!< Sensor reading.
@@ -243,6 +258,8 @@ using EntityInfoMap = std::map<Id, EntityInfo>;
  *
  * The data to cache for sensors
  */
+/* @struct SensorData
+ * 要为传感器缓存的数据 */
 struct SensorData
 {
     double value;

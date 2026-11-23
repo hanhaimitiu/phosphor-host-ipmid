@@ -1,3 +1,10 @@
+
+/**
+ * @file sessiondef.hpp
+ * @brief IPMI 会话/激活相关常量定义。
+ */
+/*  @file sessiondef.hpp
+ *  @brief IPMI 会话/激活相关常量定义。 */
 /*
  * Copyright © 2019 Intel Corporation
  *
@@ -14,6 +21,16 @@
  * limitations under the License.
  *
  */
+/*  版权所有 © 2019 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 
 #include <stddef.h>
@@ -39,9 +56,11 @@ static constexpr uint8_t searchCurrentSession = 0;
 static constexpr uint8_t searchSessionByHandle = 0xFE;
 static constexpr uint8_t searchSessionById = 0xFF;
 // MSB BIT 7 BIT 6 assigned for netipmid instance in session handle.
+// 会话句柄中的 MSB BIT 7、BIT 6 分配给 netipmid 实例。
 static constexpr uint8_t multiIntfaceSessionHandleMask = 0x3F;
 
 // MSB BIT 31-BIT30 assigned for netipmid instance in session ID
+// 会话 ID 中的 MSB BIT 31-BIT30 分配给 netipmid 实例
 static constexpr uint32_t multiIntfaceSessionIDMask = 0x3FFFFFFF;
 
 enum class State : uint8_t

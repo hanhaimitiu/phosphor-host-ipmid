@@ -1,3 +1,10 @@
+
+/**
+ * @file sensorcommands.hpp
+ * @brief 传感器 IPMI 命令（D-Bus 后端）的声明。
+ */
+/*  @file sensorcommands.hpp
+ *  @brief 传感器 IPMI 命令（D-Bus 后端）的声明。 */
 /*
 // Copyright (c) 2017 2018 Intel Corporation
 //
@@ -13,6 +20,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 */
+/* // 版权所有 (c) 2017 2018 Intel Corporation
+ * //
+ * // 根据 Apache 许可证 2.0 版（"License"）授权；
+ * // 除非符合许可证的规定，否则不得使用本文件。
+ * // 你可以从以下地址获取许可证副本：
+ * //
+ * //      http://www.apache.org/licenses/LICENSE-2.0
+ * //
+ * // 除非适用法律要求或书面同意，否则本软件
+ * // 按"原样"分发，
+ * // 不提供任何明示或暗示的保证或条件。
+ * // 有关许可证下的具体权限和限制，请参阅许可证
+ * // 本身。 */
 
 #pragma once
 #include <dbus-sdr/sdrutils.hpp>
@@ -131,6 +151,11 @@ namespace sensor
  * @return: The number of additional sensors separate from those published
  * dynamically on D-Bus
  */
+/* @brief 获取未包含在通过 D-Bus 发布的
+ * 传感器列表中的传感器数量
+ * @param[in]: ctx: 指向 D-Bus context 的指针
+ * @return: 与 D-Bus 上动态发布的传感器
+ * 分开的额外传感器数量 */
 size_t getOtherSensorsCount(ipmi::Context::ptr ctx);
 
 /**
@@ -142,6 +167,12 @@ size_t getOtherSensorsCount(ipmi::Context::ptr ctx);
  * @return: 0: success
  *          negative number: error condition
  */
+/* @brief 获取未通过 D-Bus 发布的传感器的记录数据
+ * @param[in]: ctx: 指向 D-Bus context 的指针
+ * @param[in]: recordID: 要获取的传感器的整数索引
+ * @param[out]: 索引对应传感器的 SDR 数据
+ * @return: 0 表示成功
+ *          负数表示错误情况 */
 int getOtherSensorsDataRecord(ipmi::Context::ptr ctx, uint16_t recordID,
                               std::vector<uint8_t>& recordData);
 } // namespace sensor

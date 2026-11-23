@@ -1,3 +1,10 @@
+
+/**
+ * @file handler.hpp
+ * @brief IPMI handler 的泛型注册模板（自动打包/解包参数）。
+ */
+/*  @file handler.hpp
+ *  @brief IPMI handler 的泛型注册模板（自动打包/解包参数）。 */
 /**
  * Copyright © 2018 Intel Corporation
  *
@@ -13,6 +20,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/*  版权所有 (c) 2018 Intel Corporation
+ *  根据 Apache 许可证 2.0 版（"License"）授权；
+ *  除非符合许可证的规定，否则不得使用本文件。
+ *  你可以从以下地址获取许可证副本：
+ *       http://www.apache.org/licenses/LICENSE-2.0
+ *  除非适用法律要求或书面同意，否则本软件
+ *  按"原样"分发，
+ *  不提供任何明示或暗示的保证或条件。
+ *  有关许可证下的具体权限和限制，请参阅许可证
+ *  本身。 */
 #pragma once
 #include <cxxabi.h>
 
@@ -59,7 +76,7 @@ static inline message::Response::ptr errorResponse(
     return response;
 }
 
-/** @brief Exception extension that allows setting an IPMI return code */
+/** @brief 异常扩展：允许附带 IPMI 返回码抛出 */
 class HandlerCompletion
 {
   public:
@@ -74,8 +91,7 @@ class HandlerCompletion
     Cc cc;
 };
 
-/** @brief Exception extension that allows setting an IPMI return code and
- * printing out a logged error */
+/** @brief 异常扩展：附带 IPMI 返回码并输出一条日志错误 */
 class HandlerException : public HandlerCompletion, public std::runtime_error
 {
   public:
@@ -87,6 +103,7 @@ class HandlerException : public HandlerCompletion, public std::runtime_error
     {}
 };
 
+// 取当前异常的类型名（demangle 后），用于日志
 static inline const char* currentExceptionType()
 {
     int status;
@@ -95,10 +112,9 @@ static inline const char* currentExceptionType()
 }
 
 /**
- * @brief Handler base class for dealing with IPMI request/response
+ * @brief 处理 IPMI 请求/应答的 handler 基类
  *
- * The subclasses are all templated so they can provide access to any type
- * of command callback functions.
+ * 子类全部为模板，从而能适配各种签名形式的命令回调函数。
  */
 class HandlerBase
 {
@@ -107,21 +123,18 @@ class HandlerBase
 
     virtual ~HandlerBase() = default;
 
-    /** @brief wrap the call to the registered handler with the request
+    /** @brief 用请求对象包装对已注册 handler 的调用
      *
-     * This is called from the running queue context after it has already
-     * created a request object that contains all the information required to
-     * execute the ipmi command. This function will return the response object
-     * pointer that owns the response object that will ultimately get sent back
-     * to the requester.
+     * 在运行队列上下文中调用：此时 request 对象已经创建，
+     * 携带执行 IPMI 命令所需的全部信息。返回值是应答对象指针，
+     * 它持有的应答最终会被发回请求方。
      *
-     * This is a non-virtual function wrapper to the virtualized executeCallback
-     * function that actually does the work. This is required because of how
-     * templates and virtualization work together.
+     * 这是对虚函数 executeCallback 的非虚包装——实际工作由后者完成。
+     * 之所以这样分层，是由模板与虚函数的协作方式决定的。
      *
-     * @param request a shared_ptr to a Request object
+     * @param request 指向 Request 对象的 shared_ptr
      *
-     * @return a shared_ptr to a Response object
+     * @return 指向 Response 对象的 shared_ptr
      */
     message::Response::ptr call(message::Request::ptr request)
     {
@@ -129,29 +142,25 @@ class HandlerBase
     }
 
   private:
-    /** @brief call the registered handler with the request
+    /** @brief 用请求对象调用已注册的 handler
      *
-     * This is called from the running queue context after it has already
-     * created a request object that contains all the information required to
-     * execute the ipmi command. This function will return the response object
-     * pointer that owns the response object that will ultimately get sent back
-     * to the requester.
+     * 在运行队列上下文中调用；此时 request 已包含执行 IPMI 命令
+     * 所需的全部信息。返回的应答对象最终发回请求方。
      *
-     * @param request a shared_ptr to a Request object
+     * @param request 指向 Request 对象的 shared_ptr
      *
-     * @return a shared_ptr to a Response object
+     * @return 指向 Response 对象的 shared_ptr
      */
     virtual message::Response::ptr executeCallback(
         message::Request::ptr request) = 0;
 };
 
 /**
- * @brief Main IPMI handler class
+ * @brief 主 IPMI handler 类
  *
- * New IPMI handlers will resolve into this class, which will read the signature
- * of the registering function, attempt to extract the appropriate arguments
- * from a request, pass the arguments to the function, and then pack the
- * response of the function back into an IPMI response.
+ * 新式 IPMI handler 都会落到这个类：它读取注册函数的签名，
+ * 从请求中提取匹配的参数，调用函数，再把函数的返回值
+ * 打包回 IPMI 应答。
  */
 template <typename Handler>
 class IpmiHandler final : public HandlerBase
@@ -164,22 +173,17 @@ class IpmiHandler final : public HandlerBase
   private:
     Handler handler_;
 
-    /** @brief call the registered handler with the request
+    /** @brief 用请求对象调用已注册的 handler
      *
-     * This is called from the running queue context after it has already
-     * created a request object that contains all the information required to
-     * execute the ipmi command. This function will return the response object
-     * pointer that owns the response object that will ultimately get sent back
-     * to the requester.
+     * 在运行队列上下文中调用；此时 request 已包含执行 IPMI 命令
+     * 所需的全部信息。返回的应答对象最终发回请求方。
      *
-     * Because this is the new variety of IPMI handler, this is the function
-     * that attempts to extract the requested parameters in order to pass them
-     * onto the callback function and then packages up the response into a plain
-     * old vector to pass back to the caller.
+     * 作为新式 IPMI handler，本函数负责从请求中提取参数传给回调，
+     * 并把返回值打包成普通 vector 交回调用者。
      *
-     * @param request a shared_ptr to a Request object
+     * @param request 指向 Request 对象的 shared_ptr
      *
-     * @return a shared_ptr to a Response object
+     * @return 指向 Response 对象的 shared_ptr
      */
     message::Response::ptr executeCallback(
         message::Request::ptr request) override
@@ -201,24 +205,20 @@ class IpmiHandler final : public HandlerBase
             response->cc = unpackError;
             return response;
         }
-        /* callbacks can contain an optional first argument of one of:
-         * 1) boost::asio::yield_context
-         * 2) ipmi::Context::ptr
-         * 3) ipmi::message::Request::ptr
+        /* 回调的首参可以是以下可选项之一：
+         * 1) boost::asio::yield_context（协程上下文）
+         * 2) ipmi::Context::ptr（命令上下文）
+         * 3) ipmi::message::Request::ptr（原始请求）
          *
-         * If any of those is part of the callback signature as the first
-         * argument, it will automatically get packed into the parameter pack
-         * here.
+         * 若回调签名的首参是上述类型之一，这里会自动把它
+         * 填进参数包。
          *
-         * One more special optional argument is an ipmi::message::Payload.
-         * This argument can be in any position, though logically it makes the
-         * most sense if it is the last. If this class is included in the
-         * handler signature, it will allow for the handler to unpack optional
-         * parameters. For example, the Set LAN Configuration Parameters
-         * command takes variable length (and type) values for each of the LAN
-         * parameters. This means that the  only fixed data is the channel and
-         * parameter selector. All the remaining data can be extracted using
-         * the Payload class and the unpack API available to the Payload class.
+         * 另一个特殊的可选参数是 ipmi::message::Payload。它可以出现在
+         * 任意位置（逻辑上放最后最合理）。若 handler 签名中包含它，
+         * 便可以在 handler 内自行解包可选参数。例如 Set LAN
+         * Configuration Parameters 命令的每个 LAN 参数都是变长
+         * （且类型可变）的，固定数据只有通道与参数选择子，其余数据
+         * 都要通过 Payload 类及其 unpack API 提取。
          */
         ResultType result;
         try
@@ -251,18 +251,17 @@ class IpmiHandler final : public HandlerBase
                 }
                 else
                 {
-                    // no special parameters were requested (but others were)
+                    // 未请求特殊参数（但请求了其他参数）
                     inputArgs.emplace(std::move(unpackArgs));
                 }
             }
             else
             {
-                // no parameters were requested
+                // 未请求任何参数
                 inputArgs = std::move(unpackArgs);
             }
 
-            // execute the registered callback function and get the
-            // ipmi::RspType<>
+            // 执行已注册的回调函数，取得 ipmi::RspType<> 结果
             result = std::apply(handler_, *inputArgs);
         }
         catch (const HandlerException& e)
@@ -298,6 +297,7 @@ class IpmiHandler final : public HandlerBase
         response->cc = std::get<0>(result);
         auto payload = std::get<1>(result);
         // check for optional payload
+        // 检查可选的 payload
         if (payload)
         {
             response->pack(*payload);
@@ -318,6 +318,12 @@ static constexpr size_t maxLegacyBufferSize = 64 * 1024;
  * As soon as all the handlers have been rewritten, this class will be marked as
  * deprecated and eventually removed.
  */
+/* @brief Legacy IPMI handler 类
+ * Legacy IPMI handler 将解析成该类，其行为与
+ * legacy IPMI 队列相同，传入一个大的请求缓冲区和
+ * 一个大的响应缓冲区。
+ * 一旦所有 handler 都被重写，该类将被标记为
+ * 弃用并最终移除。 */
 template <>
 class IpmiHandler<ipmid_callback_t> final : public HandlerBase
 {
@@ -346,11 +352,23 @@ class IpmiHandler<ipmid_callback_t> final : public HandlerBase
      *
      * @return a shared_ptr to a Response object
      */
+    /* @brief 用请求调用已注册的 handler
+     * 它在运行中的队列上下文里被调用，此时
+     * 已经创建了一个包含执行 ipmi 命令所需
+     * 全部信息的请求对象。该函数返回响应对象
+     * 指针，该指针拥有最终将发送回请求者的
+     * 响应对象。
+     * 由于这是 legacy 类型的 IPMI handler，
+     * 该函数实际上只需把 payload 传给回调
+     * 并把响应返回给调用方。
+     * @param request 指向 Request 对象的 shared_ptr
+     * @return 指向 Response 对象的 shared_ptr */
     message::Response::ptr executeCallback(
         message::Request::ptr request) override
     {
         message::Response::ptr response = request->makeResponse();
         // allocate a big response buffer here
+        // 在这里分配一个大的响应缓冲区
         response->payload.resize(maxLegacyBufferSize);
 
         size_t len = request->payload.size() - request->payload.rawIndex;
@@ -407,6 +425,12 @@ class IpmiHandler<ipmid_callback_t> final : public HandlerBase
  * As soon as all the handlers have been rewritten, this class will be marked as
  * deprecated and eventually removed.
  */
+/* @brief Legacy IPMI OEM handler 类
+ * Legacy IPMI OEM handler 将解析成该类，其行为与
+ * legacy 队列相同，传入一个大的请求缓冲区和
+ * 一个大的响应缓冲区。
+ * 一旦所有 handler 都被重写，该类将被标记为
+ * 弃用并最终移除。 */
 template <>
 class IpmiHandler<oem::Handler> final : public HandlerBase
 {
@@ -432,11 +456,23 @@ class IpmiHandler<oem::Handler> final : public HandlerBase
      *
      * @return a shared_ptr to a Response object
      */
+    /* @brief 用请求调用已注册的 handler
+     * 它在运行中的队列上下文里被调用，此时
+     * 已经创建了一个包含执行 ipmi 命令所需
+     * 全部信息的请求对象。该函数返回响应对象
+     * 指针，该指针拥有最终将发送回请求者的
+     * 响应对象。
+     * 由于这是 legacy 类型的 IPMI handler，
+     * 该函数实际上只需把 payload 传给回调
+     * 并把响应返回给调用方。
+     * @param request 指向 Request 对象的 shared_ptr
+     * @return 指向 Response 对象的 shared_ptr */
     message::Response::ptr executeCallback(
         message::Request::ptr request) override
     {
         message::Response::ptr response = request->makeResponse();
         // allocate a big response buffer here
+        // 在这里分配一个大的响应缓冲区
         response->payload.resize(maxLegacyBufferSize);
 
         size_t len = request->payload.size() - request->payload.rawIndex;
@@ -495,6 +531,12 @@ class IpmiHandler<oem::Handler> final : public HandlerBase
  *
  * @return A shared_ptr to the created handler object
  */
+/* @brief 创建一个 legacy IPMI handler 类并返回 shared_ptr
+ * 队列使用指针映射来进行查找；该函数返回拥有 Handler 对象的
+ * shared_ptr。
+ * 它由 ipmi_register_callback 函数在内部调用。
+ * @param handler 指向回调的函数指针
+ * @return 指向所创建 handler 对象的 shared_ptr */
 inline auto makeLegacyHandler(const ipmid_callback_t& handler,
                               void* ctx = nullptr)
 {
@@ -514,6 +556,12 @@ inline auto makeLegacyHandler(const ipmid_callback_t& handler,
  *
  * @return A shared_ptr to the created handler object
  */
+/* @brief 创建一个 legacy IPMI OEM handler 类并返回 shared_ptr
+ * 队列使用指针映射来进行查找；该函数返回拥有 Handler 对象的
+ * shared_ptr。
+ * 它由 Router::registerHandler 方法在内部调用。
+ * @param handler 指向回调的函数指针
+ * @return 指向所创建 handler 对象的 shared_ptr */
 inline auto makeLegacyHandler(oem::Handler&& handler)
 {
     HandlerBase::ptr ptr(
@@ -534,6 +582,12 @@ inline auto makeLegacyHandler(oem::Handler&& handler)
  *
  * @return A shared_ptr to the created handler object
  */
+/* @brief 创建一个 IPMI handler 类并返回 shared_ptr
+ * 队列使用指针映射来进行查找；该函数返回拥有 Handler 对象的
+ * shared_ptr。
+ * 它由 ipmi::registerHandler 函数在内部调用。
+ * @param handler 指向回调的函数指针
+ * @return 指向所创建 handler 对象的 shared_ptr */
 template <typename Handler>
 inline auto makeHandler(Handler&& handler)
 {
@@ -546,6 +600,7 @@ namespace impl
 {
 
 // IPMI command handler registration implementation
+// IPMI 命令 handler 注册实现
 bool registerHandler(int prio, NetFn netFn, Cmd cmd, Privilege priv,
                      ::ipmi::HandlerBase::ptr handler);
 bool registerGroupHandler(int prio, Group group, Cmd cmd, Privilege priv,
@@ -571,6 +626,17 @@ bool registerOemHandler(int prio, Iana iana, Cmd cmd, Privilege priv,
  *
  * @return bool - success of registering the handler
  */
+/* @brief 主 IPMI handler 注册函数
+ * 该函数应用于注册所有新式 IPMI handler
+ * 函数。它只是把回调传给 makeHandler，
+ * 后者创建一个新的包装对象，自动为回调函数
+ * 提取适当的参数并打包响应。
+ * @param prio - 注册优先级；参见 api.hpp
+ * @param netFn - 要注册的 IPMI 网络功能号
+ * @param cmd - 要注册的 IPMI 命令号
+ * @param priv - 该命令所需的 IPMI 用户特权
+ * @param handler - 将处理此请求的回调函数
+ * @return bool - handler 注册是否成功 */
 template <typename Handler>
 bool registerHandler(int prio, NetFn netFn, Cmd cmd, Privilege priv,
                      Handler&& handler)
@@ -610,6 +676,29 @@ bool registerHandler(int prio, NetFn netFn, Cmd cmd, Privilege priv,
  * @return bool - success of registering the handler
  *
  */
+/* @brief 注册 IPMI OEM group handler
+ * 根据 IPMI 2.0 规范 Network Function Codes 表（第 2Ch 行）：
+ * 该网络功能下请求和响应中的第一个数据字节，
+ * 用于标识定义命令功能的机构（defining body）。
+ * 软件假定命令和完成码字段的位置分别存放
+ * 命令值和完成码值。
+ * 以下值用于标识该机构：
+ * 00h PICMG - PCI Industrial Computer Manufacturer's Group. (www.picmg.com)
+ * 01h DMTF Pre-OS Working Group ASF Specification (www.dmtf.org)
+ * 02h Server System Infrastructure (SSI) Forum (www.ssiforum.org)
+ * 03h VITA Standards Organization (VSO) (www.vita.com)
+ * DCh DCMI Specifications (www.intel.com/go/dcmi)
+ * 其他值均为保留
+ * 使用该网络功能时，定义机构的 ID 占用
+ * 请求中的第一个数据字节，以及响应中
+ * （完成码之后）的第二个数据字节。
+ * @tparam Handler - 隐式指定的回调函数类型
+ * @param prio - 注册优先级；参见 api.hpp
+ * @param netFn - 要注册的 IPMI 网络功能号
+ * @param cmd - 要注册的 IPMI 命令号
+ * @param priv - 该命令所需的 IPMI 用户特权
+ * @param handler - 将处理此请求的回调函数
+ * @return bool - handler 注册是否成功 */
 template <typename Handler>
 void registerGroupHandler(int prio, Group group, Cmd cmd, Privilege priv,
                           Handler&& handler)
@@ -645,6 +734,26 @@ void registerGroupHandler(int prio, Group group, Cmd cmd, Privilege priv,
  * @return bool - success of registering the handler
  *
  */
+/* @brief 注册 IPMI OEM IANA handler
+ * 根据 IPMI 规范 Network Function Codes 表（第 2Eh 行）：
+ * 该网络功能下请求和响应的前三个数据字节，
+ * 明确标识定义命令功能的 OEM 或非 IPMI 机构。
+ * 虽然该机构定义了 cmd 和其余数据字段的
+ * 功能语义，但对于给定的操作，
+ * cmd 字段在请求和响应中必须保持相同的值，
+ * 才能受 IPMI 消息处理和传输机制支持。
+ * 使用该网络功能时，定义机构的 IANA
+ * Enterprise Number 占用请求中的
+ * 前三个数据字节，以及响应中
+ * 完成码位置之后的
+ * 前三个数据字节。
+ * @tparam Handler - 隐式指定的回调函数类型
+ * @param prio - 注册优先级；参见 api.hpp
+ * @param netFn - 要注册的 IPMI 网络功能号
+ * @param cmd - 要注册的 IPMI 命令号
+ * @param priv - 该命令所需的 IPMI 用户特权
+ * @param handler - 将处理此请求的回调函数
+ * @return bool - handler 注册是否成功 */
 template <typename Handler>
 void registerOemHandler(int prio, Iana iana, Cmd cmd, Privilege priv,
                         Handler&& handler)
@@ -670,6 +779,7 @@ void registerOemHandler(int prio, Iana iana, Cmd cmd, Privilege priv,
  * @param priv - the IPMI user privilege required for this command
  */
 // [[deprecated("Use ipmi::registerHandler() instead")]]
+// [[deprecated("Use ipmi::registerHandler() instead")]]  // 已弃用：请改用 ipmi::registerHandler()
 void ipmi_register_callback(ipmi_netfn_t netFn, ipmi_cmd_t cmd,
                             ipmi_context_t context, ipmid_callback_t handler,
                             ipmi_cmd_privilege_t priv);

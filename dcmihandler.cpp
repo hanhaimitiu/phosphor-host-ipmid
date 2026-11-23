@@ -1,3 +1,10 @@
+
+/**
+ * @file dcmihandler.cpp
+ * @brief DCMI（数据中心管理接口）扩展命令的实现。
+ */
+/* @file dcmihandler.cpp
+ * @brief DCMI（数据中心管理接口）扩展命令的实现。 */
 #include "config.h"
 
 #include "dcmihandler.hpp"
@@ -59,6 +66,9 @@ constexpr uint16_t dhcpTiming3 = 0x40; // 60 sec
 // When DHCP Option 12 is enabled the string "SendHostName=true" will be
 // added into n/w configuration file and the parameter
 // SendHostNameEnabled will set to true.
+// 当启用 DHCP Option 12 时，字符串 "SendHostName=true" 将被
+// 添加到网络配置文件中，并且参数
+// SendHostNameEnabled 将被设为 true。
 constexpr auto dhcpOpt12Enabled = "SendHostNameEnabled";
 
 enum class DCMIConfigParameters : uint8_t
@@ -75,6 +85,9 @@ enum class DCMIConfigParameters : uint8_t
  * specification version 1.5 for more information.
  * https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf
  */
+/* 异常动作选项列表。更多信息请参阅 DCMI
+ * 规范 1.5 版的表 6-17。
+ * https://www.intel.com/content/dam/www/public/us/en/documents/technical-specifications/dcmi-v1-5-rev-spec.pdf */
 enum class ExceptActOptions : uint8_t
 {
     NoAction = 0x00,
@@ -101,6 +114,8 @@ enum class ExceptActOptions : uint8_t
  * The PDIs only supports NoAction/HardPowerOff/LogEventOnly/Oem options for
  * exception action.
  */
+/* PDI 仅支持 NoAction/HardPowerOff/LogEventOnly/Oem
+ * 作为异常动作选项。 */
 namespace DbusExceptAct
 {
 constexpr auto noAction =
@@ -114,6 +129,7 @@ constexpr auto oem =
 } // namespace DbusExceptAct
 
 // Refer Table 6-14, DCMI Entity ID Extension, DCMI v1.5 spec
+// 请参阅 DCMI v1.5 规范中的表 6-14（DCMI Entity ID Extension）
 static const std::map<uint8_t, std::string> entityIdToName{
     {0x40, "inlet"}, {0x37, "inlet"},     {0x41, "cpu"},
     {0x03, "cpu"},   {0x42, "baseboard"}, {0x07, "baseboard"}};
@@ -391,6 +407,8 @@ bool setPcapCorrectTime(ipmi::Context::ptr& ctx, uint32_t pcapCorrectTime)
      * Dbus is storing Correction time in microseconds unit.
      * Therefore, we have to convert it from millisecond to microseconds.
      */
+    /* Dbus 以微秒为单位存储 Correction time。
+     * 因此，需要将其从毫秒转换为微秒。 */
     uint64_t pcapCorrectTimeUs =
         (uint64_t)(std::chrono::duration_cast<std::chrono::microseconds>(
                        std::chrono::milliseconds(pcapCorrectTime)))
@@ -423,6 +441,8 @@ bool setPcapSamplePeriod(ipmi::Context::ptr& ctx, uint16_t pcapSamplePeriod)
      * Dbus is storing Sampling period in microseconds unit.
      * Therefore, we have to convert it from seconds to microseconds unit.
      */
+    /* Dbus 以微秒为单位存储 Sampling period。
+     * 因此，需要将其从秒转换为微秒。 */
     uint64_t pcapSamplePeriodUs =
         (uint64_t)(std::chrono::duration_cast<std::chrono::microseconds>(
                        std::chrono::seconds(pcapSamplePeriod)))
@@ -446,6 +466,8 @@ std::optional<std::string> readAssetTag(ipmi::Context::ptr& ctx)
 {
     // Read the object tree with the inventory root to figure out the object
     // that has implemented the Asset tag interface.
+    // 以 inventory root 读取对象树，找出
+    // 实现了 Asset tag 接口的对象。
     ipmi::DbusObjectInfo objectInfo;
     boost::system::error_code ec = getDbusObject(
         ctx, dcmi::assetTagIntf, ipmi::sensor::inventoryRoot, "", objectInfo);
@@ -473,6 +495,8 @@ bool writeAssetTag(ipmi::Context::ptr& ctx, const std::string& assetTag)
 {
     // Read the object tree with the inventory root to figure out the object
     // that has implemented the Asset tag interface.
+    // 以 inventory root 读取对象树，找出
+    // 实现了 Asset tag 接口的对象。
     ipmi::DbusObjectInfo objectInfo;
     boost::system::error_code ec = getDbusObject(
         ctx, dcmi::assetTagIntf, ipmi::sensor::inventoryRoot, "", objectInfo);
@@ -704,6 +728,13 @@ ipmi::RspType<> setPowerLimit(ipmi::Context::ptr& ctx, uint16_t reserved1,
      *  11h - Log event to SEL only
      *  12h-FFh Reserved
      */
+    /* 如 DCMI 规范 1.5 版表 6-18 所定义。
+     * 异常动作值映射如下：
+     *  00h - 无动作
+     *  01h - 硬断电关机并向 SEL 记录事件
+     *  02h - 10h OEM 自定义动作
+     *  11h - 仅向 SEL 记录事件
+     *  12h-FFh 保留 */
     if (exceptionAction >= 0x12)
     {
         return ipmi::responseUnspecifiedError();
@@ -784,6 +815,8 @@ ipmi::RspType<uint8_t,          // total tag length
 {
     // Verify offset to read and number of bytes to read are not exceeding
     // the range.
+    // 校验读取偏移和读取字节数未超出
+    // 范围。
     if ((offset > dcmi::assetTagMaxOffset) || (count > dcmi::maxBytes) ||
         ((offset + count) > dcmi::assetTagMaxSize))
     {
@@ -799,6 +832,8 @@ ipmi::RspType<uint8_t,          // total tag length
     std::string& assetTag = assetTagResp.value();
     // If the asset tag is longer than 63 bytes, restrict it to 63 bytes to
     // suit Get Asset Tag command.
+    // 如果 asset tag 超过 63 字节，则将其限制为 63 字节，
+    // 以适配 Get Asset Tag 命令。
     if (assetTag.size() > dcmi::assetTagMaxSize)
     {
         assetTag.resize(dcmi::assetTagMaxSize);
@@ -810,6 +845,7 @@ ipmi::RspType<uint8_t,          // total tag length
     }
 
     // silently truncate reads beyond the end of assetTag
+    // 静默截断超出 assetTag 末尾的读取
     if ((offset + count) >= assetTag.size())
     {
         count = assetTag.size() - offset;
@@ -829,6 +865,8 @@ ipmi::RspType<uint8_t // new asset tag length
 {
     // Verify offset to read and number of bytes to read are not exceeding
     // the range.
+    // 校验读取偏移和读取字节数未超出
+    // 范围。
     if ((offset > dcmi::assetTagMaxOffset) || (count > dcmi::maxBytes) ||
         ((offset + count) > dcmi::assetTagMaxSize))
     {
@@ -853,6 +891,7 @@ ipmi::RspType<uint8_t // new asset tag length
     }
 
     // operation is to truncate at offset and append new data
+    // 该操作是在 offset 处截断并追加新数据
     assetTag.resize(offset);
     assetTag.append(data.begin(), data.end());
 
@@ -884,6 +923,8 @@ ipmi::RspType<uint8_t,          // length
     std::string& hostname = hostnameResp.value();
     // If the id string is longer than 63 bytes, restrict it to 63 bytes to
     // suit set management ctrl str  command.
+    // 如果 id 字符串超过 63 字节，则将其限制为 63 字节，
+    // 以适配 set management ctrl str 命令。
     if (hostname.size() > dcmi::maxCtrlIdStrLen)
     {
         hostname.resize(dcmi::maxCtrlIdStrLen);
@@ -895,6 +936,7 @@ ipmi::RspType<uint8_t,          // length
     }
 
     // silently truncate reads beyond the end of hostname
+    // 静默截断超出 hostname 末尾的读取
     if ((offset + count) >= hostname.size())
     {
         count = hostname.size() - offset;
@@ -924,6 +966,7 @@ ipmi::RspType<uint8_t> setMgmntCtrlIdStr(ipmi::Context::ptr& ctx,
     if (terminalWrite)
     {
         // remove the null termination from the data (no need with std::string)
+        // 从数据中去掉 null 终止符（std::string 不需要）
         data.resize(count - 1);
     }
     else if ((offset + count) == dcmi::maxCtrlIdStrLen)
@@ -933,9 +976,11 @@ ipmi::RspType<uint8_t> setMgmntCtrlIdStr(ipmi::Context::ptr& ctx,
 
     static std::string hostname{};
     // read in the current value if not starting at offset 0
+    // 若不是从 offset 0 开始，则先读入当前值
     if (hostname.size() == 0 && offset != 0)
     {
         /* read old ctrlIdStr */
+        /* 读取旧的 ctrlIdStr */
         std::optional<std::string> hostnameResp = dcmi::getHostName(ctx);
         if (!hostnameResp)
         {
@@ -946,9 +991,11 @@ ipmi::RspType<uint8_t> setMgmntCtrlIdStr(ipmi::Context::ptr& ctx,
     }
 
     // operation is to truncate at offset and append new data
+    // 该操作是在 offset 处截断并追加新数据
     hostname.append(data.begin(), data.end());
 
     // do the update if this is the last write
+    // 若是最后一次写入则执行更新
     if (terminalWrite)
     {
         boost::system::error_code ec = ipmi::setDbusProperty(
@@ -1014,6 +1061,7 @@ ipmi::RspType<ipmi::message::Payload> getDCMICapabilities(uint8_t parameter)
             break;
         }
             // Mandatory Platform Attributes
+            // 强制平台属性
         case DCMICapParameters::MandatoryPlatAttributes:
         {
             bool selAutoRollOver = data.value("SELAutoRollOver", 0);
@@ -1032,6 +1080,7 @@ ipmi::RspType<ipmi::message::Payload> getDCMICapabilities(uint8_t parameter)
             break;
         }
         // Optional Platform Attributes
+        // 可选平台属性
         case DCMICapParameters::OptionalPlatAttributes:
         {
             uint7_t powerMgmtDeviceTargetAddress =
@@ -1043,6 +1092,7 @@ ipmi::RspType<ipmi::message::Payload> getDCMICapabilities(uint8_t parameter)
             break;
         }
         // Manageability Access Attributes
+        // 可管理性访问属性
         case DCMICapParameters::ManageabilityAccessAttributes:
         {
             uint8_t mandatoryPrimaryLanOOBSupport =
@@ -1080,6 +1130,11 @@ std::tuple<bool, bool, uint8_t> readTemp(ipmi::Context::ptr& ctx,
     // temperature is an double and in degrees C. It needs to be scaled by
     // using the formula Value * 10^Scale. The ipmi spec has the temperature
     // as a uint8_t, with a separate single bit for the sign.
+    // 从 d-bus 对象读取温度值。需要进行一些转换。
+    // 按照 xyz.openbmc_project.Sensor.Value 接口，
+    // 温度是摄氏度单位的 double，需按 Value * 10^Scale 公式
+    // 进行换算。IPMI 规范中温度为 uint8_t，
+    // 符号由单独一个位表示。
 
     ipmi::PropertyMap result{};
     boost::system::error_code ec = ipmi::getAllDbusProperties(
@@ -1103,6 +1158,7 @@ std::tuple<bool, bool, uint8_t> readTemp(ipmi::Context::ptr& ctx,
 
     auto tempDegrees = absTemp * scale;
     // Max absolute temp as per ipmi spec is 127.
+    // 按 IPMI 规范，最大绝对温度为 127。
     constexpr auto maxTemp = 127;
     if (tempDegrees > maxTemp)
     {
@@ -1125,6 +1181,7 @@ std::tuple<std::vector<std::tuple<uint7_t, bool, uint8_t>>, uint8_t> read(
     for (const auto& j : readings)
     {
         // Max of 8 response data sets
+        // 最多 8 组响应数据
         if (response.size() == count)
         {
             break;
@@ -1132,6 +1189,7 @@ std::tuple<std::vector<std::tuple<uint7_t, bool, uint8_t>>, uint8_t> read(
 
         uint8_t instanceNum = j.value("instance", 0);
         // Not in the instance range we're interested in
+        // 不在我们关心的实例范围内
         if (instanceNum < instance)
         {
             continue;
@@ -1144,6 +1202,7 @@ std::tuple<std::vector<std::tuple<uint7_t, bool, uint8_t>>, uint8_t> read(
         if (ec.value())
         {
             // not found on dbus
+            // 在 dbus 上未找到
             continue;
         }
 
@@ -1190,6 +1249,7 @@ ipmi::RspType<uint8_t,                // total instances for entity id
     uint8_t requestedRecords = (entityInstance == 0) ? dcmi::maxRecords : 1;
 
     // Read requested instances
+    // 读取请求的实例
     const auto& [temps, totalInstances] = dcmi::temp_readings::read(
         ctx, it->second, instanceStart, requestedRecords);
 
@@ -1207,6 +1267,7 @@ ipmi::RspType<> setDCMIConfParams(ipmi::Context::ptr& ctx, uint8_t parameter,
         return ipmi::responseInvalidFieldRequest();
     }
     // Take action based on the Parameter Selector
+    // 根据 Parameter Selector 采取相应动作
     switch (static_cast<dcmi::DCMIConfigParameters>(parameter))
     {
         case dcmi::DCMIConfigParameters::ActivateDHCP:
@@ -1217,6 +1278,7 @@ ipmi::RspType<> setDCMIConfParams(ipmi::Context::ptr& ctx, uint8_t parameter,
                 return ipmi::responseReqDataLenInvalid();
             }
             // Only 0x01 is defined by the DCMI spec; reject any other value
+            // DCMI 规范仅定义 0x01；拒绝其他任何值
             if (activateByte != dcmi::activateDhcpValue)
             {
                 return ipmi::responseInvalidFieldRequest();
@@ -1234,6 +1296,11 @@ ipmi::RspType<> setDCMIConfParams(ipmi::Context::ptr& ctx, uint8_t parameter,
                 // but as per n/w manager design, each time when we
                 // update n/w parameters, n/w service is restarted. So
                 // we no need to take any action in this case.
+                // 满足这些条件时，我们本应使用最新的参数设置
+                // 触发 DHCP 协议重启，但根据网络管理器的设计，
+                // 每次更新网络参数时网络服务都会重启。
+                // 因此这种情况下
+                // 无需采取任何动作。
             }
             break;
         }
@@ -1249,6 +1316,7 @@ ipmi::RspType<> setDCMIConfParams(ipmi::Context::ptr& ctx, uint8_t parameter,
                 return ipmi::responseReqDataLenInvalid();
             }
             // Systemd-networkd doesn't support Random Back off
+            // Systemd-networkd 不支持 Random Back off（随机退避）
             if (reserved1 || randBackOff)
             {
                 return ipmi::responseInvalidFieldRequest();
@@ -1261,6 +1329,7 @@ ipmi::RspType<> setDCMIConfParams(ipmi::Context::ptr& ctx, uint8_t parameter,
             break;
         }
         // Systemd-networkd doesn't allow to configure DHCP timings
+        // Systemd-networkd 不允许配置 DHCP 时序
         case dcmi::DCMIConfigParameters::DHCPTiming1:
         case dcmi::DCMIConfigParameters::DHCPTiming2:
         case dcmi::DCMIConfigParameters::DHCPTiming3:
@@ -1282,6 +1351,7 @@ ipmi::RspType<ipmi::message::Payload> getDCMIConfParams(
                  dcmi::configParameterRevision);
 
     // Take action based on the Parameter Selector
+    // 根据 Parameter Selector 采取相应动作
     switch (static_cast<dcmi::DCMIConfigParameters>(parameter))
     {
         case dcmi::DCMIConfigParameters::ActivateDHCP:
@@ -1304,6 +1374,7 @@ ipmi::RspType<ipmi::message::Payload> getDCMIConfParams(
             break;
         }
         // Get below values from Systemd-networkd source code
+        // 从 Systemd-networkd 源代码中获取以下值
         case dcmi::DCMIConfigParameters::DHCPTiming1:
             payload.pack(dcmi::dhcpTiming1);
             break;
@@ -1350,6 +1421,7 @@ static std::optional<uint16_t> readPower(ipmi::Context::ptr& ctx)
     }
 
     // Return default value if failed to read from D-Bus object
+    // 若从 D-Bus 对象读取失败则返回默认值
     std::string service{};
     boost::system::error_code ec =
         ipmi::getService(ctx, SensorValue::interface, objectPath, service);
@@ -1363,6 +1435,7 @@ static std::optional<uint16_t> readPower(ipmi::Context::ptr& ctx)
     }
 
     // Read the sensor value and scale properties
+    // 读取传感器值和 scale 属性
     double value{};
     ec = ipmi::getDbusProperty(ctx, service, objectPath, SensorValue::interface,
                                SensorValue::property_names::value, value);
@@ -1427,6 +1500,10 @@ ipmi::RspType<uint16_t, // current power
     // Minimum, Maximum, Average power, TimeFrame, TimeStamp,
     // PowerReadingState readings need to be populated
     // after Telemetry changes.
+    // TODO: openbmc/openbmc#2819
+    // Minimum、Maximum、Average power、TimeFrame、TimeStamp、
+    // PowerReadingState 读数需要在
+    // Telemetry 改动之后填充。
     constexpr uint32_t samplePeriod = 1;
     constexpr uint6_t reserved1 = 0;
     constexpr bool measurementActive = true;
@@ -1454,6 +1531,7 @@ std::tuple<std::vector<uint16_t>, uint8_t> read(
     for (const auto& reading : readings)
     {
         // limit to requested count
+        // 限制为请求的数量
         if (responses.size() == count)
         {
             break;
@@ -1461,6 +1539,7 @@ std::tuple<std::vector<uint16_t>, uint8_t> read(
 
         uint8_t instanceNum = reading.value("instance", 0);
         // Not in the instance range we're interested in
+        // 不在我们关心的实例范围内
         if (instanceNum < instance)
         {
             continue;
@@ -1501,6 +1580,7 @@ ipmi::RspType<uint8_t,              // total available instances
 
     uint8_t requestedRecords = (entityInstance == 0) ? dcmi::maxRecords : 1;
     // Read requested instances
+    // 读取请求的实例
     const auto& [sensors, totalInstances] = dcmi::sensor_info::read(
         it->second, instanceStart, config, requestedRecords);
     uint8_t numRecords = sensors.size();
@@ -1511,69 +1591,84 @@ ipmi::RspType<uint8_t,              // total available instances
 void registerNetFnDcmiFunctions()
 {
     // <Get Power Limit>
+    // <Get Power Limit（获取功率限制）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetPowerLimit, ipmi::Privilege::User,
                          getPowerLimit);
 
     // <Set Power Limit>
+    // <Set Power Limit（设置功率限制）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdSetPowerLimit,
                          ipmi::Privilege::Operator, setPowerLimit);
 
     // <Activate/Deactivate Power Limit>
+    // <Activate/Deactivate Power Limit（激活/停用功率限制）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdActDeactivatePwrLimit,
                          ipmi::Privilege::Operator, applyPowerLimit);
 
     // <Get Asset Tag>
+    // <Get Asset Tag（获取资产标签）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetAssetTag, ipmi::Privilege::User,
                          getAssetTag);
 
     // <Set Asset Tag>
+    // <Set Asset Tag（设置资产标签）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdSetAssetTag, ipmi::Privilege::Operator,
                          setAssetTag);
 
     // <Get Management Controller Identifier String>
+    // <Get Management Controller Identifier String（获取管理控制器标识字符串）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetMgmtCntlrIdString,
                          ipmi::Privilege::User, getMgmntCtrlIdStr);
 
     // <Set Management Controller Identifier String>
+    // <Set Management Controller Identifier String（设置管理控制器标识字符串）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdSetMgmtCntlrIdString,
                          ipmi::Privilege::Admin, setMgmntCtrlIdStr);
 
     // <Get DCMI capabilities>
+    // <Get DCMI capabilities（获取 DCMI 能力）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetDcmiCapabilitiesInfo,
                          ipmi::Privilege::User, getDCMICapabilities);
 
     // <Get Power Reading>
+    // <Get Power Reading（获取功率读数）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetPowerReading, ipmi::Privilege::User,
                          getPowerReading);
 
 // The Get sensor should get the sensor details dynamically when
 // FEATURE_DYNAMIC_SENSORS is enabled.
+// 当启用 FEATURE_DYNAMIC_SENSORS 时，Get sensor 应动态
+// 获取传感器详情。
 #ifndef FEATURE_DYNAMIC_SENSORS
     // <Get Sensor Info>
+    // <Get Sensor Info（获取传感器信息）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetDcmiSensorInfo,
                          ipmi::Privilege::Operator, getSensorInfo);
 
     // <Get Temperature Readings>
+    // <Get Temperature Readings（获取温度读数）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetTemperatureReadings,
                          ipmi::Privilege::User, getTempReadings);
 #endif
     // <Get DCMI Configuration Parameters>
+    // <Get DCMI Configuration Parameters（获取 DCMI 配置参数）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdGetDcmiConfigParameters,
                          ipmi::Privilege::User, getDCMIConfParams);
 
     // <Set DCMI Configuration Parameters>
+    // <Set DCMI Configuration Parameters（设置 DCMI 配置参数）>
     registerGroupHandler(ipmi::prioOpenBmcBase, ipmi::groupDCMI,
                          ipmi::dcmi::cmdSetDcmiConfigParameters,
                          ipmi::Privilege::Admin, setDCMIConfParams);

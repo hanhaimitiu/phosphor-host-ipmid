@@ -1,4 +1,11 @@
 #pragma once
+
+/**
+ * @file serialcmd.hpp
+ * @brief 串口桥命令解析的声明。
+ */
+/*  @file serialcmd.hpp
+ *  @brief 串口桥命令解析的声明。 */
 #include <sdbusplus/bus.hpp>
 #include <sdbusplus/message.hpp>
 #include <sdbusplus/slot.hpp>
@@ -19,6 +26,7 @@ static constexpr auto ipmiSerialMaxBufferSize = 256;
 /**
  * @brief IPMI Serial Message Structure
  */
+/*  @brief IPMI 串口消息结构体 */
 struct IpmiSerialHeader
 {
     uint8_t rsAddr;

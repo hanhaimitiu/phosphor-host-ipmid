@@ -1,3 +1,10 @@
+
+/**
+ * @file sensorhandler.cpp
+ * @brief legacy 传感器命令入口（Platform Event / Get Sensor Reading 分发）。
+ */
+/* @file sensorhandler.cpp
+ * @brief legacy 传感器命令入口（Platform Event / Get Sensor Reading 分发）。 */
 #include "config.h"
 
 #include "sensorhandler.hpp"
@@ -70,6 +77,7 @@ sensorTypemap_t g_SensorTypeMap[] = {
     {0x0F, 0x6F, "BootProgress"},
     {0xe9, 0x09, "OccStatus"}, // E9 is an internal mapping to handle sensor
                                // type code os 0x09
+                               // 类型码 os 0x09
     {0xC3, 0x6F, "BootCount"},
     {0x1F, 0x6F, "OperatingSystemStatus"},
     {0x12, 0x6F, "SYSTEM_EVENT"},
@@ -114,6 +122,11 @@ ipmi::sensor::SensorCacheMap sensorCacheMap __attribute__((init_priority(101)));
 // that is related to the service. It uses below two variables:
 // - idToServiceMap records which sensors are known to have a related service;
 // - serviceToIdMap maps a service to the sensors.
+// 需要知道哪些对象属于哪个服务，这样当某个服务
+// 退出而未发出 interfacesRemoved 信号时，就能使
+// 与该服务相关的缓存失效。它使用以下两个变量：
+// - idToServiceMap 记录哪些传感器已知有关联的服务；
+// - serviceToIdMap 将服务映射到传感器。
 using sensorIdToServiceMap = std::unordered_map<uint8_t, std::string>;
 sensorIdToServiceMap idToServiceMap __attribute__((init_priority(101)));
 
@@ -149,6 +162,7 @@ static void fillSensorIdServiceMap(const std::string& obj,
     catch (...)
     {
         // Ignore
+        // 忽略
     }
 }
 
@@ -174,6 +188,10 @@ void initSensorMatches()
                     // But when a service is terminated or crashed, it does not
                     // emit interfacesRemoved signal. In that case it's handled
                     // by sensorsOwnerMatch
+                    // 理想情况下这应该能工作。
+                    // 但当服务被终止或崩溃时，它不会
+                    // 发出 interfacesRemoved 信号。这种情况下由
+                    // sensorsOwnerMatch 处理。
                     sensorCacheMap[id].reset();
                 }));
         sensorUpdatedMatches.emplace(
@@ -190,6 +208,7 @@ void initSensorMatches()
                     try
                     {
                         // This is signal callback
+                        // 这是信号回调
                         auto interfaceName = msg.unpack<std::string>();
 
                         auto props = msg.unpack<ipmi::PropertyMap>();
@@ -212,6 +231,7 @@ void initSensorMatches()
             if (!name.empty() && newOwner.empty())
             {
                 // The service exits
+                // 服务退出
                 const auto it = serviceToIdMap.find(name);
                 if (it == serviceToIdMap.end())
                 {
@@ -220,6 +240,7 @@ void initSensorMatches()
                 for (const auto& id : it->second)
                 {
                     // Invalidate cache
+                    // 使缓存失效
                     sensorCacheMap[id].reset();
                 }
             }
@@ -230,12 +251,16 @@ void initSensorMatches()
 // Use a lookup table to find the interface name of a specific sensor
 // This will be used until an alternative is found.  this is the first
 // step for mapping IPMI
+// 使用查找表来查找特定 sensor 的接口名称
+// 在找到替代方案之前先采用这种方式。这是映射 IPMI 的
+// 第一步。
 int find_openbmc_path(uint8_t num, dbus_interface_t* interface)
 {
     const auto& sensor_it = ipmi::sensor::sensors.find(num);
     if (sensor_it == ipmi::sensor::sensors.end())
     {
         // The sensor map does not contain the sensor requested
+        // sensor map 中不包含所请求的 sensor
         return -EINVAL;
     }
 
@@ -262,6 +287,10 @@ int find_openbmc_path(uint8_t num, dbus_interface_t* interface)
     // works for the Value interface but may not suffice for more complex
     // sensors.
     // tracked https://github.com/openbmc/phosphor-host-ipmid/issues/103
+    // 从 DbusInterfaceMap 的开头取接口名称。这
+    // 对 Value 接口有效，但对更复杂的 sensor
+    // 可能还不够。
+    // 跟踪地址 https://github.com/openbmc/phosphor-host-ipmid/issues/103
     strcpy(interface->interface,
            info.propertyInterfaces.begin()->first.c_str());
     interface->sensornumber = num;
@@ -274,6 +303,9 @@ int find_openbmc_path(uint8_t num, dbus_interface_t* interface)
 // Routines used by ipmi commands wanting to interact on the dbus
 //
 /////////////////////////////////////////////////////////////////////
+// ///////////////////////////////////////////////////////////////////
+// 供需要在 dbus 上交互的 ipmi 命令使用的例程
+// ///////////////////////////////////////////////////////////////////
 int set_sensor_dbus_state_s(uint8_t number, const char* method,
                             const char* value)
 {
@@ -392,12 +424,16 @@ uint8_t get_type_from_interface(dbus_interface_t dbus_if)
     // This is where sensors that do not exist in dbus but do
     // exist in the host code stop.  This should indicate it
     // is not a supported sensor
+    // dbus 中不存在但主机代码中存在的 sensor
+    // 会在这里停下。这应表明它
+    // 是一个不受支持的 sensor。
     if (dbus_if.interface[0] == 0)
     {
         return 0;
     }
 
     // Fetch type from interface itself.
+    // 从接口本身获取类型。
     if (dbus_if.sensortype != 0)
     {
         type = dbus_if.sensortype;
@@ -405,6 +441,7 @@ uint8_t get_type_from_interface(dbus_interface_t dbus_if)
     else
     {
         // Non InventoryItems
+        // 非 InventoryItem
         char* p = strrchr(dbus_if.path, '/');
         type = dbus_to_sensor_type(p + 1);
     }
@@ -413,6 +450,7 @@ uint8_t get_type_from_interface(dbus_interface_t dbus_if)
 }
 
 // Replaces find_sensor
+// 替代 find_sensor
 uint8_t find_type_for_sensor_number(uint8_t num)
 {
     int r;
@@ -434,6 +472,11 @@ uint8_t find_type_for_sensor_number(uint8_t num)
  *   - sensorType
  *   - eventType
  **/
+/*  @brief 实现 get sensor type 命令。
+ *  @param - sensorNumber
+ *  @return 成功时返回 IPMI 完成码及响应数据。
+ *   - sensorType
+ *   - eventType */
 
 ipmi::RspType<uint8_t, // sensorType
               uint8_t  // eventType
@@ -444,6 +487,7 @@ ipmi::RspType<uint8_t, // sensorType
     if (it == ipmi::sensor::sensors.end())
     {
         // The sensor map does not contain the sensor requested
+        // sensor map 中不包含所请求的 sensor
         return ipmi::responseSensorInvalid();
     }
 
@@ -481,6 +525,19 @@ bool isAnalogSensor(const std::string& interface)
 
 @return completion code on success.
 **/
+/* @brief 本命令用于设置 sensorReading。
+ * @param
+ * -  sensorNumber
+ * -  operation
+ * -  reading
+ * -  assertOffset0_7
+ * -  assertOffset8_14
+ * -  deassertOffset0_7
+ * -  deassertOffset8_14
+ * -  eventData1
+ * -  eventData2
+ * -  eventData3
+ * @return 成功时返回完成码。 */
 
 ipmi::RspType<> ipmiSetSensorReading(
     uint8_t sensorNumber, uint8_t operation, uint8_t reading,
@@ -509,6 +566,7 @@ ipmi::RspType<> ipmiSetSensorReading(
     cmdData.eventData3 = eventData3;
 
     // Check if the Sensor Number is present
+    // 检查 Sensor Number 是否存在
     const auto iter = ipmi::sensor::sensors.find(sensorNumber);
     if (iter == ipmi::sensor::sensors.end())
     {
@@ -555,6 +613,16 @@ ipmi::RspType<> ipmiSetSensorReading(
  *   - assertionStatesLsb   - threshold levels states
  *   - assertionStatesMsb   - discrete reading sensor states
  */
+/* @brief 实现 get sensor reading 命令
+ *  @param sensorNum - sensor 编号
+ *  @returns IPMI 完成码及响应数据
+ *   - senReading           - sensor 读数
+ *   - reserved
+ *   - readState            - sensor 读数状态已启用
+ *   - senScanState         - sensor 扫描状态已禁用
+ *   - allEventMessageState - 所有事件消息状态已禁用
+ *   - assertionStatesLsb   - 阈值级别状态
+ *   - assertionStatesMsb   - 离散读数 sensor 状态 */
 ipmi::RspType<uint8_t, // sensor reading
 
               uint5_t, // reserved
@@ -591,6 +659,7 @@ ipmi::RspType<uint8_t, // sensor reading
         if (!sensorData.has_value())
         {
             // No cached value, try read it
+            // 没有缓存值，尝试读取
             std::string service;
             boost::system::error_code ec;
             const auto& sensorInfo = iter->second;
@@ -614,6 +683,7 @@ ipmi::RspType<uint8_t, // sensor reading
                         sensorInfo.sensorPath.c_str(), ec.value(),
                         ec.message().c_str());
                 // Intitilizing with default values
+                // 使用默认值初始化
                 constexpr uint8_t senReading = 0;
                 constexpr uint5_t reserved{0};
                 constexpr bool readState = true;
@@ -658,6 +728,7 @@ ipmi::RspType<uint8_t, // sensor reading
     catch (const std::exception& e)
     {
         // Intitilizing with default values
+        // 使用默认值初始化
         constexpr uint8_t senReading = 0;
         constexpr uint5_t reserved{0};
         constexpr bool readState = true;
@@ -838,6 +909,17 @@ get_sdr::GetSensorThresholdsResponse getSensorThresholds(
  *   - upper critical
  *   - upper non-recoverable
  */
+/* @brief 实现 get sensor thresholds 命令
+ *  @param ctx - IPMI 上下文指针
+ *  @param sensorNum - sensor 编号
+ *  @returns IPMI 完成码及响应数据
+ *   - validMask - 阈值掩码
+ *   - lower non-critical threshold - IPMI 消息状态
+ *   - lower critical threshold - 链路认证状态
+ *   - lower non-recoverable threshold - 回调状态
+ *   - upper non-critical threshold
+ *   - upper critical
+ *   - upper non-recoverable */
 ipmi::RspType<uint8_t, // validMask
               uint8_t, // lowerNonCritical
               uint8_t, // lowerCritical
@@ -857,10 +939,12 @@ ipmi::RspType<uint8_t, // validMask
     const auto info = iter->second;
 
     // Proceed only if the sensor value interface is implemented.
+    // 只有在 sensor 的 Value 接口已实现时才继续。
     if (info.propertyInterfaces.find(SensorValue::interface) ==
         info.propertyInterfaces.end())
     {
         // return with valid mask as 0
+        // 返回时将 valid mask 置为 0
         return ipmi::responseSuccess();
     }
 
@@ -901,6 +985,22 @@ ipmi::RspType<uint8_t, // validMask
  *
  *  @returns IPMI completion code
  */
+/* @brief 实现 Set Sensor threshold 命令
+ *  @param sensorNumber        - sensor 编号
+ *  @param lowerNonCriticalThreshMask
+ *  @param lowerCriticalThreshMask
+ *  @param lowerNonRecovThreshMask
+ *  @param upperNonCriticalThreshMask
+ *  @param upperCriticalThreshMask
+ *  @param upperNonRecovThreshMask
+ *  @param reserved
+ *  @param lowerNonCritical    - 下限非严重阈值
+ *  @param lowerCritical       - 下限严重阈值
+ *  @param lowerNonRecoverable - 下限不可恢复阈值
+ *  @param upperNonCritical    - 上限非严重阈值
+ *  @param upperCritical       - 上限严重阈值
+ *  @param upperNonRecoverable - 上限不可恢复阈值
+ *  @returns IPMI 完成码 */
 ipmi::RspType<> ipmiSenSetSensorThresholds(
     ipmi::Context::ptr& ctx, uint8_t sensorNum, bool lowerNonCriticalThreshMask,
     bool lowerCriticalThreshMask, bool lowerNonRecovThreshMask,
@@ -915,12 +1015,14 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
     }
 
     // lower nc and upper nc not supported on any sensor
+    // 任何 sensor 都不支持 lower nc 和 upper nc
     if (lowerNonRecovThreshMask || upperNonRecovThreshMask)
     {
         return ipmi::responseInvalidFieldRequest();
     }
 
     // if none of the threshold mask are set, nothing to do
+    // 如果所有阈值掩码都未设置，则无需操作
     if (!(lowerNonCriticalThreshMask | lowerCriticalThreshMask |
           lowerNonRecovThreshMask | upperNonCriticalThreshMask |
           upperCriticalThreshMask | upperNonRecovThreshMask))
@@ -937,10 +1039,12 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
     const auto& info = iter->second;
 
     // Proceed only if the sensor value interface is implemented.
+    // 只有在 sensor 的 Value 接口已实现时才继续。
     if (info.propertyInterfaces.find(SensorValue::interface) ==
         info.propertyInterfaces.end())
     {
         // return with valid mask as 0
+        // 返回时将 valid mask 置为 0
         return ipmi::responseSuccess();
     }
 
@@ -952,13 +1056,16 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
         return ipmi::responseResponseError();
     }
     // store a vector of property name, value to set, and interface
+    // 存储由属性名、要设置的值和接口组成的 vector
     std::vector<std::tuple<std::string, uint8_t, std::string>> thresholdsToSet;
 
     // define the indexes of the tuple
+    // 定义 tuple 各元素的索引
     constexpr uint8_t propertyName = 0;
     constexpr uint8_t thresholdValue = 1;
     constexpr uint8_t interface = 2;
     // verify all needed fields are present
+    // 验证所有必需字段都存在
     if (lowerCriticalThreshMask || upperCriticalThreshMask)
     {
         ipmi::PropertyMap findThreshold;
@@ -1032,6 +1139,7 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
     for (const auto& property : thresholdsToSet)
     {
         // from section 36.3 in the IPMI Spec, assume all linear
+        // 依据 IPMI 规范第 36.3 节，假设全部为线性
         double valueToSet =
             ((info.coefficientM * std::get<thresholdValue>(property)) +
              (info.scaledOffset * std::pow(10.0, info.scale))) *
@@ -1042,6 +1150,7 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
     }
 
     // Invalidate the cache
+    // 使缓存失效
     sensorThresholdMap.erase(sensorNum);
     return ipmi::responseSuccess();
 }
@@ -1053,6 +1162,11 @@ ipmi::RspType<> ipmiSenSetSensorThresholds(
  *   - sdrCount - sensor/SDR count
  *   - lunsAndDynamicPopulation - static/Dynamic sensor population flag
  */
+/* @brief 实现 get SDR Info 命令
+ *  @param count - 操作
+ *  @returns IPMI 完成码及响应数据
+ *   - sdrCount - sensor/SDR 数量
+ *   - lunsAndDynamicPopulation - 静态/动态 sensor 数量标志 */
 ipmi::RspType<uint8_t, // respcount
               uint8_t  // dynamic population flags
               >
@@ -1060,6 +1174,7 @@ ipmi::RspType<uint8_t, // respcount
 {
     uint8_t sdrCount;
     // multiple LUNs not supported.
+    // 不支持多个 LUN。
     constexpr uint8_t lunsAndDynamicPopulation = 1;
     constexpr uint8_t getSdrCount = 0x01;
     constexpr uint8_t getSensorCount = 0x00;
@@ -1067,6 +1182,7 @@ ipmi::RspType<uint8_t, // respcount
     if (count.value_or(0) == getSdrCount)
     {
         // Get SDR count. This returns the total number of SDRs in the device.
+        // 获取 SDR 数量。返回设备中的 SDR 总数。
         const auto& entityRecords =
             ipmi::sensor::EntityInfoMapContainer::getContainer()
                 ->getIpmiEntityRecords();
@@ -1076,6 +1192,7 @@ ipmi::RspType<uint8_t, // respcount
     else if (count.value_or(0) == getSensorCount)
     {
         // Get Sensor count. This returns the number of sensors
+        // 获取 sensor 数量。返回 sensor 的数目
         sdrCount = ipmi::sensor::sensors.size();
     }
     else
@@ -1090,9 +1207,13 @@ ipmi::RspType<uint8_t, // respcount
  *  @returns IPMI completion code plus response data
  *   - reservationID - reservation ID
  */
+/* @brief 实现 reserve SDR 命令
+ *  @returns IPMI 完成码及响应数据
+ *   - reservationID - 预留 ID */
 ipmi::RspType<uint16_t> ipmiSensorReserveSdr()
 {
     // A constant reservation ID is okay until we implement add/remove SDR.
+    // 在实现 add/remove SDR 之前，使用固定的 reservation ID 即可。
     constexpr uint16_t reservationID = 1;
 
     return ipmi::responseSuccess(reservationID);
@@ -1104,10 +1225,13 @@ void setUnitFieldsForObject(const ipmi::sensor::Info& info,
     namespace server = sdbusplus::server::xyz::openbmc_project::sensor;
     body.sensorUnits1 = info.sensorUnits1; // default is 0. unsigned, no rate,
                                            // no modifier, not a %
+                                           // 没有修饰符，不是 %
     try
     {
         auto unit = server::Value::convertUnitFromString(info.unit);
         // Unit strings defined in
+        // phosphor-dbus-interfaces/xyz/openbmc_project/Sensor/Value.interface.yaml
+        // 单位字符串定义在
         // phosphor-dbus-interfaces/xyz/openbmc_project/Sensor/Value.interface.yaml
         switch (unit)
         {
@@ -1137,6 +1261,7 @@ void setUnitFieldsForObject(const ipmi::sensor::Info& info,
                 break;
             default:
                 // Cannot be hit.
+                // 不会执行到这里。
                 std::fprintf(stderr, "Unknown value unit type: = %s\n",
                              info.unit.c_str());
         }
@@ -1151,9 +1276,11 @@ ipmi::Cc populateRecordFromDbus(const ipmi::sensor::Info& info,
                                 get_sdr::SensorDataFullRecordBody& body)
 {
     /* Functional sensor case */
+    /* 功能性 sensor 的分支 */
     if (isAnalogSensor(info.propertyInterfaces.begin()->first))
     {
         /* Unit info */
+        /* 单位信息 */
         setUnitFieldsForObject(info, body);
 
         get_sdr::body::setB(info.coefficientB, body);
@@ -1163,6 +1290,7 @@ ipmi::Cc populateRecordFromDbus(const ipmi::sensor::Info& info,
     }
 
     /* ID string */
+    /* ID 字符串 */
     auto idString = info.sensorName;
 
     if (idString.empty())
@@ -1201,23 +1329,27 @@ ipmi::RspType<uint16_t,            // nextRecordId
 
     get_sdr::SensorDataFruRecord record{};
     /* Header */
+    /* 头部 */
     record.header.recordId = recordID;
     record.header.sdrVersion = SDR_VERSION; // Based on IPMI Spec v2.0 rev 1.1
     record.header.recordType = get_sdr::SENSOR_DATA_FRU_RECORD;
     record.header.recordLength = sizeof(record.key) + sizeof(record.body);
 
     /* Key */
+    /* 键 */
     record.key.fruID = fruID;
     record.key.accessLun |= IPMI_LOGICAL_FRU;
     record.key.deviceAddress = BMCTargetAddress;
 
     /* Body */
+    /* 主体 */
     record.body.entityID = fru->second[0].entityID;
     record.body.entityInstance = fru->second[0].entityInstance;
     record.body.deviceType = fruInventoryDevice;
     record.body.deviceTypeModifier = IPMIFruInventory;
 
     /* Device ID string */
+    /* 设备 ID 字符串 */
     auto deviceID =
         fru->second[0].path.substr(fru->second[0].path.find_last_of('/') + 1,
                                    fru->second[0].path.length());
@@ -1240,6 +1372,8 @@ ipmi::RspType<uint16_t,            // nextRecordId
     {
         // we have reached till end of fru, so assign the next record id to
         // 512(Max fru ID = 511) + Entity Record ID(may start with 0).
+        // 已到达 fru 末尾，因此将下一个 record id 设为
+        // 512（最大 fru ID = 511）+ Entity Record ID（可能从 0 开始）。
         const auto& entityRecords =
             ipmi::sensor::EntityInfoMapContainer::getContainer()
                 ->getIpmiEntityRecords();
@@ -1254,6 +1388,7 @@ ipmi::RspType<uint16_t,            // nextRecordId
     }
 
     // Check for invalid offset size
+    // 检查偏移量大小是否无效
     if (offset > sizeof(record))
     {
         return ipmi::responseParmOutOfRange();
@@ -1289,12 +1424,14 @@ ipmi::RspType<uint16_t,            // nextRecordId
 
     get_sdr::SensorDataEntityRecord record{};
     /* Header */
+    /* 头部 */
     record.header.recordId = recordID;
     record.header.sdrVersion = SDR_VERSION; // Based on IPMI Spec v2.0 rev 1.1
     record.header.recordType = get_sdr::SENSOR_DATA_ENTITY_RECORD;
     record.header.recordLength = sizeof(record.key) + sizeof(record.body);
 
     /* Key */
+    /* 键 */
     record.key.containerEntityId = entity->second.containerEntityId;
     record.key.containerEntityInstance = entity->second.containerEntityInstance;
     get_sdr::key::setFlags(entity->second.isList, entity->second.isLinked,
@@ -1303,6 +1440,7 @@ ipmi::RspType<uint16_t,            // nextRecordId
     record.key.entityInstance1 = entity->second.containedEntities[0].second;
 
     /* Body */
+    /* 主体 */
     record.body.entityId2 = entity->second.containedEntities[1].first;
     record.body.entityInstance2 = entity->second.containedEntities[1].second;
     record.body.entityId3 = entity->second.containedEntities[2].first;
@@ -1321,6 +1459,7 @@ ipmi::RspType<uint16_t,            // nextRecordId
     }
 
     // Check for invalid offset size
+    // 检查偏移量大小是否无效
     if (offset > sizeof(record))
     {
         return ipmi::responseParmOutOfRange();
@@ -1344,9 +1483,12 @@ ipmi::RspType<uint16_t,            // nextRecordId
 {
     // Note: we use an iterator so we can provide the next ID at the end of
     // the call.
+    // 注意：我们使用迭代器，以便在调用结束时
+    // 提供下一个 ID。
     auto sensor = ipmi::sensor::sensors.begin();
 
     // At the beginning of a scan, the host side will send us id=0.
+    // 扫描开始时，主机侧会向我们发送 id=0。
     if (recordID != 0)
     {
         // recordID 0 to 255 means it is a FULL record.
@@ -1354,6 +1496,11 @@ ipmi::RspType<uint16_t,            // nextRecordId
         // recordID greater then 511 means it is a Entity Association
         // record. Currently we are supporting three record types: FULL
         // record, FRU record and Enttiy Association record.
+        // recordID 0 到 255 表示 FULL record。
+        // recordID 256 到 511 表示 FRU record。
+        // recordID 大于 511 表示 Entity Association
+        // record。目前我们支持三种 record 类型：FULL
+        // record、FRU record 和 Entity Association record。
         if (recordID >= ENTITY_RECORD_ID_START)
         {
             return ipmiEntityGetSdr(recordID, offset, bytesToRead);
@@ -1379,6 +1526,7 @@ ipmi::RspType<uint16_t,            // nextRecordId
     if (it == sdrCacheMap.end())
     {
         /* Header */
+        /* 头部 */
         get_sdr::SensorDataFullRecord record = {};
         record.header.recordId = sensorId;
         record.header.sdrVersion = 0x51; // Based on IPMI Spec v2.0 rev 1.1
@@ -1386,10 +1534,12 @@ ipmi::RspType<uint16_t,            // nextRecordId
         record.header.recordLength = sizeof(record.key) + sizeof(record.body);
 
         /* Key */
+        /* 键 */
         get_sdr::key::setOwnerIdBmc(record.key);
         record.key.sensorNumber = sensorId;
 
         /* Body */
+        /* 主体 */
         record.body.entityId = sensor->second.entityType;
         record.body.sensorType = sensor->second.sensorType;
         record.body.eventReadingType = sensor->second.sensorReadingType;
@@ -1401,6 +1551,7 @@ ipmi::RspType<uint16_t,            // nextRecordId
         }
 
         // Set the type-specific details given the DBus interface
+        // 根据给定的 DBus 接口设置特定于类型的详细信息
         populateRecordFromDbus(sensor->second, record.body);
         sdrCacheMap[sensorId] = std::move(record);
     }
@@ -1412,6 +1563,8 @@ ipmi::RspType<uint16_t,            // nextRecordId
     {
         // we have reached till end of sensor, so assign the next record id
         // to 256(Max Sensor ID = 255) + FRU ID(may start with 0).
+        // 已到达 sensor 末尾，因此将下一个 record id
+        // 设为 256（最大 Sensor ID = 255）+ FRU ID（可能从 0 开始）。
         nextRecordId = (frus.size()) ? frus.begin()->first + FRU_RECORD_ID_START
                                      : END_OF_RECORD;
     }
@@ -1445,6 +1598,14 @@ ipmi::RspType<uint16_t,            // nextRecordId
  *         - Byte4: Deassertion enable (LSB)
  *         - Byte5: Deassertion enable (MSB)
  */
+/* @brief 实现 get Sensor event enable 命令
+ *  @return ipmi::RspType<std::vector<uint8_t>>
+ *         - 完成码
+ *         - Byte1：全局事件/扫描使能状态
+ *         - Byte2：断言使能（LSB）
+ *         - Byte3：断言使能（MSB）
+ *         - Byte4：解除断言使能（LSB）
+ *         - Byte5：解除断言使能（MSB） */
 ipmi::RspType<
     uint6_t, bool, bool, // Byte 1: Global enable + scanning + reserved6
     bool, bool, bool, bool, bool, bool, bool, bool, // Byte 2: Assertion LSB
@@ -1465,16 +1626,19 @@ ipmi::RspType<
     if (eventReadingType == 0x00)
     {
         // 00h: Event/Reading Type unspecified.
+        // 00h：未指定 Event/Reading 类型。
         return ipmi::responseSensorInvalid();
     }
 
     if (eventReadingType != 0x01)
     {
         // TODO: Discrete
+        // TODO：离散（Discrete）
         return ipmi::responseSensorInvalid();
     }
 
     // Threshold
+    // 阈值（Threshold）
     auto it = sensorThresholdMap.find(sensorNum);
     if (it == sensorThresholdMap.end())
     {
@@ -1493,27 +1657,33 @@ ipmi::RspType<
                         t.upperNonCritical || t.lowerNonCritical;
 
     // Byte1: Global Event/Scanning enable status
+    // Byte1：全局事件/扫描使能状态
     bool scanningEnabled = anyThreshold;
     bool eventsEnabled = anyThreshold;
 
     return ipmi::responseSuccess(
         // Byte1
+        // Byte1
         uint6_t{}, scanningEnabled, eventsEnabled,
 
+        // Byte2
         // Byte2
         t.lowerNonCritical, t.lowerNonCritical, t.lowerCritical,
         t.lowerCritical, t.lowerNonRecoverable, t.lowerNonRecoverable,
         t.upperNonCritical, t.upperNonCritical,
 
         // Byte3
+        // Byte3
         t.upperCritical, t.upperCritical, t.upperNonRecoverable,
         t.upperNonRecoverable, 0, 0, 0, 0,
 
+        // Byte4
         // Byte4
         t.lowerNonCritical, t.lowerNonCritical, t.lowerCritical,
         t.lowerCritical, t.lowerNonRecoverable, t.lowerNonRecoverable,
         t.upperNonCritical, t.upperNonCritical,
 
+        // Byte5
         // Byte5
         t.upperCritical, t.upperCritical, t.upperNonRecoverable,
         t.upperNonRecoverable, 0, 0, 0, 0);
@@ -1524,6 +1694,9 @@ static bool isFromSystemChannel()
     // TODO we could not figure out where the request is from based on IPMI
     // command handler parameters. because of it, we can not differentiate
     // request from SMS/SMM or IPMB channel
+    // TODO 我们无法根据 IPMI 命令处理程序的参数
+    // 判断请求来自哪里。因此，我们无法区分
+    // 请求是来自 SMS/SMM 还是 IPMB 通道
     return true;
 }
 
@@ -1545,22 +1718,31 @@ ipmi::RspType<> ipmicmdPlatformEvent(ipmi::Context::ptr& ctx,
     {
         // first byte for SYSTEM Interface is Generator ID +1 to get common
         // struct
+        // 对于 SYSTEM Interface，第一个字节是 Generator ID，需要 +1 才能
+        // 得到公共结构体
         req = reinterpret_cast<const PlatformEventRequest*>(raw + 1);
         // Capture the generator ID
+        // 捕获 generator ID
         generatorID = *raw;
         // Platform Event usually comes from other firmware, like BIOS.
         // Unlike BMC sensor, it does not have BMC DBUS sensor path.
+        // Platform Event 通常来自其他固件，例如 BIOS。
+        // 与 BMC sensor 不同，它没有 BMC DBUS sensor 路径。
         sensorPath = "System";
     }
     else
     {
         req = reinterpret_cast<const PlatformEventRequest*>(raw);
         // TODO GeneratorID for IPMB is combination of RqSA and RqLUN
+        // TODO IPMB 的 GeneratorID 是 RqSA 和 RqLUN 的组合
     }
 
     // Content of event data field depends on sensor class.
     // When data0 bit[5:4] is non-zero, valid data counts is 3.
     // When data0 bit[7:6] is non-zero, valid data counts is 2.
+    // event data 字段的内容取决于 sensor 类别。
+    // 当 data0 bit[5:4] 非零时，有效数据计数为 3。
+    // 当 data0 bit[7:6] 非零时，有效数据计数为 2。
     if (((req->data[0] & byte3EnableMask) != 0 &&
          paraLen < selSystemEventSizeWith3Bytes) ||
         ((req->data[0] & byte2EnableMask) != 0 &&
@@ -1570,6 +1752,7 @@ ipmi::RspType<> ipmicmdPlatformEvent(ipmi::Context::ptr& ctx,
     }
 
     // Count bytes of Event Data
+    // 统计 Event Data 的字节数
     size_t count;
     if ((req->data[0] & byte3EnableMask) != 0)
     {
@@ -1602,48 +1785,59 @@ void registerNetFnSenFunctions()
 {
     // Handlers with dbus-sdr handler implementation.
     // Do not register the handler if it dynamic sensors stack is used.
+    // 采用 dbus-sdr 实现的处理程序。
+    // 如果使用动态 sensor 栈，则不要注册该处理程序。
 
 #ifndef FEATURE_DYNAMIC_SENSORS
 
 #ifdef FEATURE_SENSORS_CACHE
     // Initialize the sensor matches
+    // 初始化 sensor 匹配项
     initSensorMatches();
 #endif
 
     // <Set Sensor Reading and Event Status>
+    // <Set Sensor Reading and Event Status>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdSetSensorReadingAndEvtSts,
                           ipmi::Privilege::Operator, ipmiSetSensorReading);
+    // <Get Sensor Reading>
     // <Get Sensor Reading>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetSensorReading,
                           ipmi::Privilege::User, ipmiSensorGetSensorReading);
 
     // <Reserve Device SDR Repository>
+    // <Reserve Device SDR Repository>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdReserveDeviceSdrRepository,
                           ipmi::Privilege::User, ipmiSensorReserveSdr);
 
+    // <Get Device SDR Info>
     // <Get Device SDR Info>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetDeviceSdrInfo,
                           ipmi::Privilege::User, ipmiSensorGetDeviceSdrInfo);
 
     // <Get Sensor Thresholds>
+    // <Get Sensor Thresholds>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetSensorThreshold,
                           ipmi::Privilege::User, ipmiSensorGetSensorThresholds);
 
+    // <Set Sensor Thresholds>
     // <Set Sensor Thresholds>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdSetSensorThreshold,
                           ipmi::Privilege::User, ipmiSenSetSensorThresholds);
 
     // <Get Device SDR>
+    // <Get Device SDR>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetDeviceSdr,
                           ipmi::Privilege::User, ipmiSensorGetSdr);
 
+    // <Get Sensor Event Enable>
     // <Get Sensor Event Enable>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetSensorEventEnable,
@@ -1652,12 +1846,15 @@ void registerNetFnSenFunctions()
 #endif
 
     // Common Handers used by both implementation.
+    // 两种实现共用的处理程序。
 
+    // <Platform Event Message>
     // <Platform Event Message>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdPlatformEvent,
                           ipmi::Privilege::Operator, ipmicmdPlatformEvent);
 
+    // <Get Sensor Type>
     // <Get Sensor Type>
     ipmi::registerHandler(ipmi::prioOpenBmcBase, ipmi::netFnSensor,
                           ipmi::sensor_event::cmdGetSensorType,

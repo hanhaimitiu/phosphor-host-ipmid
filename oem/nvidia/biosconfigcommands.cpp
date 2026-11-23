@@ -1,3 +1,10 @@
+
+/**
+ * @file biosconfigcommands.cpp
+ * @brief NVIDIA OEM：BIOS 配置命令（BIOSSetting 等）的实现。
+ */
+/*  @file biosconfigcommands.cpp
+ *  @brief NVIDIA OEM：BIOS 配置命令（BIOSSetting 等）的实现。 */
 /*
  * SPDX-FileCopyrightText: Copyright OpenBMC Authors
  * SPDX-License-Identifier: Apache-2.0
@@ -48,6 +55,7 @@ ipmi::RspType<> ipmiSetBiosPassword(
         return ipmi::responseInvalidFieldRequest();
     }
     // key names for json object
+    // json 对象的键名
     constexpr char keyHashAlgo[] = "HashAlgo";
     constexpr char keySeed[] = "Seed";
     constexpr char keyAdminPwdHash[] = "AdminPwdHash";
@@ -61,6 +69,7 @@ ipmi::RspType<> ipmiSetBiosPassword(
             json[keyHashAlgo] = "SHA256";
             RAND_bytes(salt.data(), salt.size());
             // password is only Null-terminated character
+            // password 仅是以 Null 结尾的字符
             PKCS5_PBKDF2_HMAC("", 1, salt.data(), salt.size(), biosPasswordIter,
                               EVP_sha256(), SHA256_DIGEST_LENGTH, hash.data());
             json[keySeed] = salt;
@@ -85,6 +94,8 @@ ipmi::RspType<> ipmiSetBiosPassword(
 
     // initializing with 0 as user password hash field
     // is not used presently
+    // 用 0 初始化用户密码哈希字段，
+    // 该字段目前未使用
     constexpr std::array<uint8_t, biosPasswordMaxHashSize> userPwdHash = {0};
     json[keyUserPwdHash] = userPwdHash;
 
@@ -123,10 +134,12 @@ ipmi::RspType<uint8_t,                                     // action
     if (!ifs.is_open())
     {
         // return No change if no file
+        // 如果没有文件则返回 No change
         return ipmi::responseSuccess(action, salt, hash);
     }
 
     // key names for json object
+    // json 对象的键名
     constexpr char keyIsAdminPwdChanged[] = "IsAdminPwdChanged";
     constexpr char keyHashAlgo[] = "HashAlgo";
     constexpr char keySeed[] = "Seed";

@@ -1,3 +1,10 @@
+
+/**
+ * @file ipmisensor.cpp
+ * @brief legacy 传感器处理（旧版 sensor 表方式）。
+ */
+/* @file ipmisensor.cpp
+ * @brief legacy 传感器处理（旧版 sensor 表方式）。 */
 #include "sensorhandler.hpp"
 
 #include <malloc.h>
@@ -26,6 +33,8 @@ struct sensorRES_t
 
 // Sensor Type,  Offset, function handler, Dbus Method, Assert value, Deassert
 // value
+// 传感器类型、偏移、函数处理程序、Dbus 方法、Assert 值、Deassert
+// 值
 struct lookup_t
 {
     uint8_t sensor_type;
@@ -113,6 +122,8 @@ char* event_data_lookup(event_data_t* p, uint8_t b)
 
 //  The fw progress sensor contains some additional information that needs to be
 //  processed prior to calling the dbus code.
+//  固件进度传感器包含一些额外信息，在调用 dbus 代码前
+//  需要先处理这些信息。
 int set_sensor_dbus_state_fwprogress(const sensorRES_t* pRec,
                                      const lookup_t* pTable, const char*)
 {
@@ -151,6 +162,9 @@ int set_sensor_dbus_state_fwprogress(const sensorRES_t* pRec,
 // Handling this special OEM sensor by coping what is in byte 4.  I also think
 // that is odd considering byte 3 is for sensor reading.  This seems like a
 // misuse of the IPMI spec
+//  通过复制 byte 4 中的内容来处理这个特殊的 OEM 传感器。鉴于
+//  byte 3 本用于传感器读数，我也觉得这很奇怪。这似乎是在
+//  滥用 IPMI 规范。
 int set_sensor_dbus_state_osbootcount(const sensorRES_t* pRec, const lookup_t*,
                                       const char*)
 {
@@ -202,6 +216,9 @@ int set_sensor_dbus_state_system_event(const sensorRES_t* pRec,
 //  This table lists only senors we care about telling dbus about.
 //  Offset definition cab be found in section 42.2 of the IPMI 2.0
 //  spec.  Add more if/when there are more items of interest.
+//  本表仅列出我们关心并需要通知 dbus 的传感器。
+//  Offset 定义见 IPMI 2.0 规范第 42.2 节。
+//  若/当出现更多关注项时再添加。
 lookup_t g_ipmidbuslookup[] = {
 
     {0xe9, 0x00, set_sensor_dbus_state_simple, "setValue", "Disabled",
@@ -209,10 +226,13 @@ lookup_t g_ipmidbuslookup[] = {
     {0xe9, 0x01, set_sensor_dbus_state_simple, "setValue", "Enabled",
      ""}, // OCC Active 1
     // Turbo Allowed
+    // 允许 Turbo（Turbo Allowed）
     {0xda, 0x00, set_sensor_dbus_state_simple, "setValue", "True", "False"},
     // Power Supply Derating
+    // 电源降额（Power Supply Derating）
     {0xb4, 0x00, set_sensor_dbus_state_simple, "setValue", "", ""},
     // Power Cap
+    // 功率上限（Power Cap）
     {0xC2, 0x00, set_sensor_dbus_state_simple, "setValue", "", ""},
     {0x07, 0x07, set_sensor_dbus_state_simple, "setPresent", "True", "False"},
     {0x07, 0x08, set_sensor_dbus_state_simple, "setFault", "True", "False"},
@@ -309,6 +329,9 @@ int updateSensorRecordFromSSRAESC(const void* record)
     // 0xC3 types use the assertion7_0 for the value to be set
     // so skip the research and call the correct event reporting
     // function
+    // 0xC3 类型使用 assertion7_0 作为要设置的值，
+    // 因此无需再研究，直接调用正确的事件上报
+    // 函数即可。
     if (stype == 0xC3)
     {
         shouldReport(stype, 0x00, &index);
@@ -318,6 +341,8 @@ int updateSensorRecordFromSSRAESC(const void* record)
     {
         // Scroll through each bit position .  Determine
         // if any bit is either asserted or Deasserted.
+        // 逐个遍历每个位位置，判断
+        // 是否有位被断言（asserted）或取消断言（deasserted）。
         for (int i = 0; i < 8; i++)
         {
             if ((ISBITSET(pRec->assert_state7_0, i)) &&
